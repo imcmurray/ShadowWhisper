@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../room/providers/room_provider.dart';
+import '../../../room/domain/chat_message.dart';
 
 /// Scrollable list of chat messages.
 ///
@@ -10,18 +13,16 @@ import '../../../../core/theme/app_colors.dart';
 /// - Message reactions
 /// - Typing indicators
 /// - Seen/delivered status
-class MessageList extends StatefulWidget {
+class MessageList extends ConsumerStatefulWidget {
   const MessageList({super.key});
 
   @override
-  State<MessageList> createState() => _MessageListState();
+  ConsumerState<MessageList> createState() => _MessageListState();
 }
 
-class _MessageListState extends State<MessageList> {
+class _MessageListState extends ConsumerState<MessageList> {
   final ScrollController _scrollController = ScrollController();
-
-  // TODO: Replace with real messages from Riverpod state
-  final List<_Message> _messages = [];
+  int _previousMessageCount = 0;
 
   @override
   void dispose() {
@@ -41,21 +42,33 @@ class _MessageListState extends State<MessageList> {
 
   @override
   Widget build(BuildContext context) {
-    if (_messages.isEmpty) {
+    final messages = ref.watch(messagesProvider);
+    final currentPeerId = ref.watch(currentPeerIdProvider);
+
+    // Auto-scroll to bottom when new messages arrive
+    if (messages.length > _previousMessageCount) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToBottom();
+      });
+    }
+    _previousMessageCount = messages.length;
+
+    if (messages.isEmpty) {
       return _buildEmptyState();
     }
 
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.all(16),
-      itemCount: _messages.length,
+      itemCount: messages.length,
       itemBuilder: (context, index) {
-        final message = _messages[index];
+        final message = messages[index];
         final showSenderInfo = index == 0 ||
-            _messages[index - 1].senderId != message.senderId;
+            messages[index - 1].senderPeerId != message.senderPeerId;
 
         return _MessageBubble(
           message: message,
+          currentPeerId: currentPeerId,
           showSenderInfo: showSenderInfo,
         );
       },
@@ -94,11 +107,13 @@ class _MessageListState extends State<MessageList> {
 
 /// Message bubble widget.
 class _MessageBubble extends StatelessWidget {
-  final _Message message;
+  final ChatMessage message;
+  final String currentPeerId;
   final bool showSenderInfo;
 
   const _MessageBubble({
     required this.message,
+    required this.currentPeerId,
     required this.showSenderInfo,
   });
 
@@ -111,13 +126,17 @@ class _MessageBubble extends StatelessWidget {
     return emojiRegex.hasMatch(message.content);
   }
 
+  bool get _isOwnMessage => message.senderPeerId == currentPeerId;
+  bool get _isSeen => message.seenBy.isNotEmpty;
+  bool get _isDelivered => message.deliveredTo.isNotEmpty;
+
   @override
   Widget build(BuildContext context) {
     if (message.isRemoved) {
       return _buildRemovedMessage(context);
     }
 
-    final isOwnMessage = message.isOwn;
+    final isOwnMessage = _isOwnMessage;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -134,7 +153,7 @@ class _MessageBubble extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(left: 12, bottom: 4),
               child: Text(
-                message.senderName,
+                message.senderDisplayName,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w600,
@@ -185,13 +204,13 @@ class _MessageBubble extends StatelessWidget {
                     if (isOwnMessage) ...[
                       const SizedBox(width: 4),
                       Icon(
-                        message.isSeen
+                        _isSeen
                             ? Icons.done_all
-                            : (message.isDelivered
+                            : (_isDelivered
                                 ? Icons.done_all
                                 : Icons.done),
                         size: 14,
-                        color: message.isSeen
+                        color: _isSeen
                             ? AppColors.textPrimary
                             : AppColors.textPrimary.withValues(alpha: 0.7),
                       ),
@@ -217,7 +236,7 @@ class _MessageBubble extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      '${entry.key} ${entry.value}',
+                      '${entry.key} ${entry.value.length}',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   );
@@ -249,31 +268,4 @@ class _MessageBubble extends StatelessWidget {
     final minute = time.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
   }
-}
-
-/// Message model (temporary, will be replaced with proper model).
-class _Message {
-  final String id;
-  final String senderId;
-  final String senderName;
-  final String content;
-  final DateTime timestamp;
-  final bool isOwn;
-  final bool isDelivered;
-  final bool isSeen;
-  final bool isRemoved;
-  final Map<String, int> reactions;
-
-  _Message({
-    required this.id,
-    required this.senderId,
-    required this.senderName,
-    required this.content,
-    required this.timestamp,
-    this.isOwn = false,
-    this.isDelivered = false,
-    this.isSeen = false,
-    this.isRemoved = false,
-    this.reactions = const {},
-  });
 }

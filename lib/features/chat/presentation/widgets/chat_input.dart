@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../room/providers/room_provider.dart';
 
 /// Chat input widget with message field, emoji picker, and send button.
 ///
@@ -8,14 +10,14 @@ import '../../../../core/theme/app_colors.dart';
 /// - Emoji picker integration
 /// - Send on Enter key
 /// - Disabled state during sending
-class ChatInput extends StatefulWidget {
+class ChatInput extends ConsumerStatefulWidget {
   const ChatInput({super.key});
 
   @override
-  State<ChatInput> createState() => _ChatInputState();
+  ConsumerState<ChatInput> createState() => _ChatInputState();
 }
 
-class _ChatInputState extends State<ChatInput> {
+class _ChatInputState extends ConsumerState<ChatInput> {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
   bool _isSending = false;
@@ -55,8 +57,16 @@ class _ChatInputState extends State<ChatInput> {
       _isSending = true;
     });
 
-    // TODO: Send message via P2P network
-    await Future.delayed(const Duration(milliseconds: 100));
+    // Get current user info from providers
+    final peerId = ref.read(currentPeerIdProvider);
+    final displayName = ref.read(currentDisplayNameProvider);
+
+    // Add message to the messages provider
+    ref.read(messagesProvider.notifier).addMessage(
+      senderPeerId: peerId,
+      senderDisplayName: displayName,
+      content: message,
+    );
 
     _controller.clear();
 
