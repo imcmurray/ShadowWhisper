@@ -107,6 +107,16 @@ class ParticipantDrawer extends ConsumerWidget {
                         side: const BorderSide(color: AppColors.textSecondary),
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: () => _simulateDisconnect(context, ref),
+                      icon: const Icon(Icons.wifi_off_outlined),
+                      label: const Text('Simulate Disconnect'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.warning,
+                        side: const BorderSide(color: AppColors.warning),
+                      ),
+                    ),
                     if (isApprovalMode) ...[
                       const SizedBox(height: 8),
                       OutlinedButton.icon(
@@ -164,6 +174,37 @@ class ParticipantDrawer extends ConsumerWidget {
     }
   }
 
+  void _simulateDisconnect(BuildContext context, WidgetRef ref) {
+    final participants = ref.read(participantsProvider);
+    final currentPeerId = ref.read(currentPeerIdProvider);
+
+    // Find a non-creator, non-self participant to disconnect
+    final targetParticipant = participants.where(
+      (p) => !p.isCreator && p.peerId != currentPeerId && p.isOnline && !p.isDisconnected,
+    ).toList();
+
+    if (targetParticipant.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No participants available to disconnect. Add a test participant first.'),
+          backgroundColor: AppColors.warning,
+        ),
+      );
+      return;
+    }
+
+    // Disconnect the first available participant
+    final participant = targetParticipant.first;
+    ref.read(roomProvider.notifier).markParticipantDisconnected(participant.peerId);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${participant.displayName} disconnected. 30s countdown started.'),
+        backgroundColor: AppColors.warning,
+      ),
+    );
+  }
+
   void _kickParticipant(BuildContext context, WidgetRef ref, Participant participant) {
     showDialog(
       context: context,
@@ -207,25 +248,32 @@ class _ParticipantTile extends StatelessWidget {
   final bool showKickButton;
   final bool isSelf;
   final VoidCallback onKick;
+  final VoidCallback? onSimulateDisconnect;
 
   const _ParticipantTile({
     required this.participant,
     required this.showKickButton,
     required this.isSelf,
     required this.onKick,
+    this.onSimulateDisconnect,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isDisconnected = participant.isDisconnected;
+    final remainingSeconds = participant.timeoutRemainingSeconds;
+
     return ListTile(
       leading: Stack(
         children: [
           CircleAvatar(
-            backgroundColor: AppColors.background,
+            backgroundColor: isDisconnected
+                ? AppColors.warning.withValues(alpha: 0.2)
+                : AppColors.background,
             child: Text(
               participant.displayName[0].toUpperCase(),
-              style: const TextStyle(
-                color: AppColors.primary,
+              style: TextStyle(
+                color: isDisconnected ? AppColors.warning : AppColors.primary,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -238,7 +286,9 @@ class _ParticipantTile extends StatelessWidget {
               width: 12,
               height: 12,
               decoration: BoxDecoration(
-                color: participant.isOnline ? AppColors.online : AppColors.offline,
+                color: isDisconnected
+                    ? AppColors.warning
+                    : (participant.isOnline ? AppColors.online : AppColors.offline),
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: AppColors.surface,
@@ -255,6 +305,9 @@ class _ParticipantTile extends StatelessWidget {
             child: Text(
               participant.displayName,
               overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: isDisconnected ? AppColors.textSecondary : null,
+              ),
             ),
           ),
           if (isSelf) ...[
@@ -291,17 +344,54 @@ class _ParticipantTile extends StatelessWidget {
               ),
             ),
           ],
+          // Disconnected countdown badge
+          if (isDisconnected) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.timer_outlined,
+                    size: 12,
+                    color: AppColors.warning,
+                  ),
+                  const SizedBox(width: 2),
+                  Text(
+                    '${remainingSeconds}s',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: AppColors.warning,
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
-      subtitle: participant.isTyping
+      subtitle: isDisconnected
           ? Text(
-              'typing...',
+              'Disconnected - will be removed in ${remainingSeconds}s',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.typing,
+                    color: AppColors.warning,
                     fontStyle: FontStyle.italic,
                   ),
             )
-          : null,
+          : (participant.isTyping
+              ? Text(
+                  'typing...',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.typing,
+                        fontStyle: FontStyle.italic,
+                      ),
+                )
+              : null),
       trailing: showKickButton
           ? IconButton(
               icon: const Icon(Icons.person_remove_outlined),

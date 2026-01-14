@@ -101,6 +101,12 @@ final pendingRequestCountProvider = Provider<int>((ref) {
   return requests.length;
 });
 
+/// Disconnected participants with countdown timers
+final disconnectedParticipantsProvider = Provider<List<Participant>>((ref) {
+  final participants = ref.watch(participantsProvider);
+  return participants.where((p) => p.isDisconnected).toList();
+});
+
 /// Room state notifier
 class RoomNotifier extends StateNotifier<Room?> {
   final Ref _ref;
@@ -414,6 +420,117 @@ class RoomNotifier extends StateNotifier<Room?> {
     }).toList();
 
     state = state!.copyWith(participants: updatedParticipants);
+  }
+
+  /// Mark a participant as disconnected (starts 30s countdown)
+  void markParticipantDisconnected(String peerId) {
+    if (state == null) return;
+
+    final updatedParticipants = state!.participants.map((p) {
+      if (p.peerId == peerId) {
+        return p.copyWith(
+          isOnline: false,
+          disconnectedAt: DateTime.now(),
+        );
+      }
+      return p;
+    }).toList();
+
+    state = state!.copyWith(participants: updatedParticipants);
+
+    // Get the display name for notification
+    final participant = state!.participants.firstWhere(
+      (p) => p.peerId == peerId,
+      orElse: () => throw Exception('Participant not found'),
+    );
+
+    _ref.read(notificationsProvider.notifier).addNotification(
+      type: RoomNotificationType.participantLeft,
+      message: '${participant.displayName} disconnected (30s to reconnect)',
+      peerId: peerId,
+    );
+  }
+
+  /// Mark a participant as reconnected (clears disconnect state)
+  void markParticipantReconnected(String peerId) {
+    if (state == null) return;
+
+    final updatedParticipants = state!.participants.map((p) {
+      if (p.peerId == peerId) {
+        return p.copyWith(
+          isOnline: true,
+          clearDisconnectedAt: true,
+          lastSeen: DateTime.now(),
+        );
+      }
+      return p;
+    }).toList();
+
+    state = state!.copyWith(participants: updatedParticipants);
+
+    // Get the display name for notification
+    final participant = state!.participants.firstWhere(
+      (p) => p.peerId == peerId,
+      orElse: () => throw Exception('Participant not found'),
+    );
+
+    _ref.read(notificationsProvider.notifier).addNotification(
+      type: RoomNotificationType.participantJoined,
+      message: '${participant.displayName} reconnected',
+      peerId: peerId,
+    );
+  }
+
+  /// Check for timed out participants and remove them
+  /// Returns list of removed peer IDs
+  List<String> checkAndRemoveTimedOutParticipants() {
+    if (state == null) return [];
+
+    final timedOutPeerIds = <String>[];
+    final timedOutNames = <String>[];
+
+    // Find all timed out participants
+    for (final participant in state!.participants) {
+      if (participant.hasTimedOut) {
+        timedOutPeerIds.add(participant.peerId);
+        timedOutNames.add(participant.displayName);
+      }
+    }
+
+    if (timedOutPeerIds.isEmpty) return [];
+
+    // Remove timed out participants
+    final updatedParticipants = state!.participants
+        .where((p) => !timedOutPeerIds.contains(p.peerId))
+        .toList();
+
+    state = state!.copyWith(participants: updatedParticipants);
+
+    // Mark messages from timed out users as removed and add notifications
+    for (int i = 0; i < timedOutPeerIds.length; i++) {
+      _ref.read(messagesProvider.notifier).markMessagesAsRemoved(timedOutPeerIds[i]);
+      _ref.read(notificationsProvider.notifier).addNotification(
+        type: RoomNotificationType.participantLeft,
+        message: '${timedOutNames[i]} timed out',
+        peerId: timedOutPeerIds[i],
+      );
+    }
+
+    return timedOutPeerIds;
+  }
+
+  /// Get list of disconnected participants with their remaining time
+  List<Map<String, dynamic>> getDisconnectedParticipants() {
+    if (state == null) return [];
+
+    return state!.participants
+        .where((p) => p.isDisconnected)
+        .map((p) => {
+              'peerId': p.peerId,
+              'displayName': p.displayName,
+              'remainingSeconds': p.timeoutRemainingSeconds,
+            })
+        .toList();
   }
 
   /// Update display name

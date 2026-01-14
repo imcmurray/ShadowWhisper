@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/routing/app_router.dart';
@@ -37,6 +38,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool _isBlurred = false;
   int? _lastNotificationCount;
+  Timer? _timeoutCheckTimer;
 
   @override
   void initState() {
@@ -47,6 +49,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeRoom();
     });
+
+    // Start periodic timer to check for timed out participants
+    _timeoutCheckTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _checkTimedOutParticipants();
+    });
+  }
+
+  void _checkTimedOutParticipants() {
+    // Check and remove timed out participants
+    final removedPeerIds = ref.read(roomProvider.notifier).checkAndRemoveTimedOutParticipants();
+    if (removedPeerIds.isNotEmpty) {
+      // Force UI rebuild to update participant list and countdown timers
+      setState(() {});
+    }
   }
 
   void _initializeRoom() {
@@ -66,6 +82,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
 
   @override
   void dispose() {
+    _timeoutCheckTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
