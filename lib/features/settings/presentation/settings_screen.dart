@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../room/providers/room_provider.dart';
+import '../../chat/providers/security_provider.dart';
 
 /// Settings screen overlay/modal.
 ///
@@ -191,6 +192,51 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             title: 'Onion Routing',
                             description:
                                 'Traffic is routed through multiple anonymous relays, hiding your IP address.',
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Developer tools section (for testing)
+                    _buildSection(
+                      context,
+                      title: 'Developer Tools',
+                      icon: Icons.bug_report_outlined,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            'Test network error handling',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                          ),
+                          const SizedBox(height: 12),
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              ref.read(connectionProvider.notifier).simulateNetworkError();
+                              Navigator.pop(context);
+                            },
+                            icon: const Icon(Icons.wifi_off, size: 18),
+                            label: const Text('Simulate Network Error'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.warning,
+                              side: const BorderSide(color: AppColors.warning),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              ref.read(connectionProvider.notifier).setConnected();
+                              Navigator.pop(context);
+                            },
+                            icon: const Icon(Icons.wifi, size: 18),
+                            label: const Text('Restore Connection'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.success,
+                              side: const BorderSide(color: AppColors.success),
+                            ),
                           ),
                         ],
                       ),

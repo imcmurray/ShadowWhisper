@@ -11,6 +11,7 @@ import 'widgets/participant_drawer.dart';
 import 'widgets/blur_overlay.dart';
 import 'widgets/shadow_mode_indicator.dart';
 import 'widgets/typing_indicator.dart';
+import 'widgets/connection_banner.dart';
 
 /// Main chat screen for the room.
 ///
@@ -185,6 +186,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
           ),
           body: Column(
             children: [
+              // Connection status banner (shows only when disconnected)
+              const ConnectionBanner(),
+
               // Message list
               const Expanded(
                 child: MessageList(),
@@ -229,6 +233,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                     ),
                     const SizedBox(width: 8),
                     const ShadowModeIndicator(),
+                    const SizedBox(width: 4),
+                    const ConnectionIndicator(),
                     if (isApprovalMode) ...[
                       const SizedBox(width: 4),
                       const _ApprovalModeIndicator(),
