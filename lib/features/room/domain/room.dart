@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'participant.dart';
 
+/// Maximum number of participants allowed in a room.
+const int maxRoomParticipants = 20;
+
 /// Represents an ephemeral chat room.
 @immutable
 class Room {
@@ -38,6 +41,9 @@ class Room {
 
   /// Get participant count
   int get participantCount => participants.length;
+
+  /// Check if the room is full
+  bool get isFull => participants.length >= maxRoomParticipants;
 
   Room copyWith({
     String? swarmId,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../room/domain/participant.dart';
+import '../../../room/domain/room.dart';
 import '../../../room/providers/room_provider.dart';
 
 /// Drawer showing the list of room participants.
@@ -86,7 +87,7 @@ class ParticipantDrawer extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: OutlinedButton.icon(
-                  onPressed: () => _addTestParticipant(ref),
+                  onPressed: () => _addTestParticipant(context, ref),
                   icon: const Icon(Icons.person_add_outlined),
                   label: const Text('Add Test Participant'),
                   style: OutlinedButton.styleFrom(
@@ -101,13 +102,22 @@ class ParticipantDrawer extends ConsumerWidget {
     );
   }
 
-  void _addTestParticipant(WidgetRef ref) {
+  void _addTestParticipant(BuildContext context, WidgetRef ref) {
     final names = [
       'Shadow Wolf', 'Midnight Hawk', 'Silent Panther', 'Phantom Eagle',
       'Mystic Raven', 'Covert Serpent', 'Stealth Tiger', 'Veiled Lynx',
     ];
     final random = DateTime.now().millisecondsSinceEpoch % names.length;
-    ref.read(roomProvider.notifier).addSimulatedParticipant(names[random]);
+    final success = ref.read(roomProvider.notifier).addSimulatedParticipant(names[random]);
+
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Room is full (maximum $maxRoomParticipants participants)'),
+          backgroundColor: AppColors.warning,
+        ),
+      );
+    }
   }
 
   void _kickParticipant(BuildContext context, WidgetRef ref, Participant participant) {

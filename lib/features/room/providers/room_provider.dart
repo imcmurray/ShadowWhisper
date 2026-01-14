@@ -7,6 +7,14 @@ import '../domain/room_notification.dart';
 
 const _uuid = Uuid();
 
+/// Result of attempting to join a room
+enum JoinResult {
+  success,
+  kicked,
+  roomFull,
+  notFound,
+}
+
 /// Generates a random anonymous name for a participant
 String _generateAnonymousName() {
   const adjectives = [
@@ -111,7 +119,8 @@ class RoomNotifier extends StateNotifier<Room?> {
   }
 
   /// Join an existing room
-  bool joinRoom({
+  /// Returns a JoinResult indicating success or the reason for failure
+  JoinResult joinRoom({
     required String roomCode,
     required String roomName,
   }) {
@@ -120,7 +129,12 @@ class RoomNotifier extends StateNotifier<Room?> {
 
     // Check if user was kicked from this room
     if (state != null && state!.isKicked(peerId)) {
-      return false;
+      return JoinResult.kicked;
+    }
+
+    // Check if room is full
+    if (state != null && state!.isFull) {
+      return JoinResult.roomFull;
     }
 
     final participant = Participant(
@@ -158,12 +172,16 @@ class RoomNotifier extends StateNotifier<Room?> {
       peerId: peerId,
     );
 
-    return true;
+    return JoinResult.success;
   }
 
   /// Add a simulated participant (for testing)
-  void addSimulatedParticipant(String displayName) {
-    if (state == null) return;
+  /// Returns false if room is full
+  bool addSimulatedParticipant(String displayName) {
+    if (state == null) return false;
+
+    // Check if room is full
+    if (state!.isFull) return false;
 
     final participant = Participant(
       peerId: _uuid.v4(),
@@ -183,6 +201,8 @@ class RoomNotifier extends StateNotifier<Room?> {
       message: '$displayName joined the room',
       peerId: participant.peerId,
     );
+
+    return true;
   }
 
   /// Kick a participant (creator only)

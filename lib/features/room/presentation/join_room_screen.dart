@@ -65,30 +65,35 @@ class _JoinRoomScreenState extends ConsumerState<JoinRoomScreen> {
       return;
     }
 
-    // Check if user was kicked from this room
-    final currentPeerId = ref.read(currentPeerIdProvider);
-    final isKicked = ref.read(roomProvider.notifier).isPeerKicked(currentPeerId);
-
-    if (isKicked) {
-      setState(() {
-        _isJoining = false;
-        _errorMessage = 'You have been removed from this room and cannot rejoin';
-      });
-      return;
-    }
-
     // Try to join the room
-    final success = ref.read(roomProvider.notifier).joinRoom(
+    final result = ref.read(roomProvider.notifier).joinRoom(
       roomCode: roomCode,
       roomName: 'Room',
     );
 
-    if (!success) {
-      setState(() {
-        _isJoining = false;
-        _errorMessage = 'You have been removed from this room and cannot rejoin';
-      });
-      return;
+    // Handle join result
+    switch (result) {
+      case JoinResult.kicked:
+        setState(() {
+          _isJoining = false;
+          _errorMessage = 'You have been removed from this room and cannot rejoin';
+        });
+        return;
+      case JoinResult.roomFull:
+        setState(() {
+          _isJoining = false;
+          _errorMessage = 'Room is full (maximum 20 participants)';
+        });
+        return;
+      case JoinResult.notFound:
+        setState(() {
+          _isJoining = false;
+          _errorMessage = 'Room not found';
+        });
+        return;
+      case JoinResult.success:
+        // Continue to navigate
+        break;
     }
 
     if (!mounted) return;
