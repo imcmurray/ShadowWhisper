@@ -27,6 +27,7 @@ dependencies:
   # P2P Networking
   flutter_webrtc: ^0.12.1
   web_socket_channel: ^3.0.1
+  http: ^1.2.1
 
   # Note: P2P and Tor integration packages
   # These may need custom implementations or web-compatible alternatives:

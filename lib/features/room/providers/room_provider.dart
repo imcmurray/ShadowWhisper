@@ -426,6 +426,15 @@ class RoomNotifier extends StateNotifier<Room?> {
   void markParticipantDisconnected(String peerId) {
     if (state == null) return;
 
+    // Find the participant first to get display name
+    final participantIndex = state!.participants.indexWhere((p) => p.peerId == peerId);
+    if (participantIndex == -1) {
+      // Participant not found - might have already been removed
+      return;
+    }
+
+    final participant = state!.participants[participantIndex];
+
     final updatedParticipants = state!.participants.map((p) {
       if (p.peerId == peerId) {
         return p.copyWith(
@@ -438,12 +447,6 @@ class RoomNotifier extends StateNotifier<Room?> {
 
     state = state!.copyWith(participants: updatedParticipants);
 
-    // Get the display name for notification
-    final participant = state!.participants.firstWhere(
-      (p) => p.peerId == peerId,
-      orElse: () => throw Exception('Participant not found'),
-    );
-
     _ref.read(notificationsProvider.notifier).addNotification(
       type: RoomNotificationType.participantLeft,
       message: '${participant.displayName} disconnected (30s to reconnect)',
@@ -454,6 +457,15 @@ class RoomNotifier extends StateNotifier<Room?> {
   /// Mark a participant as reconnected (clears disconnect state)
   void markParticipantReconnected(String peerId) {
     if (state == null) return;
+
+    // Find the participant first
+    final participantIndex = state!.participants.indexWhere((p) => p.peerId == peerId);
+    if (participantIndex == -1) {
+      // Participant not found - might have already been removed
+      return;
+    }
+
+    final participant = state!.participants[participantIndex];
 
     final updatedParticipants = state!.participants.map((p) {
       if (p.peerId == peerId) {
@@ -467,12 +479,6 @@ class RoomNotifier extends StateNotifier<Room?> {
     }).toList();
 
     state = state!.copyWith(participants: updatedParticipants);
-
-    // Get the display name for notification
-    final participant = state!.participants.firstWhere(
-      (p) => p.peerId == peerId,
-      orElse: () => throw Exception('Participant not found'),
-    );
 
     _ref.read(notificationsProvider.notifier).addNotification(
       type: RoomNotificationType.participantJoined,
@@ -609,10 +615,14 @@ class RoomNotifier extends StateNotifier<Room?> {
   void removeRemoteParticipant(String peerId) {
     if (state == null) return;
 
-    final participant = state!.participants.firstWhere(
-      (p) => p.peerId == peerId,
-      orElse: () => throw Exception('Participant not found'),
-    );
+    // Find the participant, return early if not found
+    final participantIndex = state!.participants.indexWhere((p) => p.peerId == peerId);
+    if (participantIndex == -1) {
+      // Participant not found - might have already been removed
+      return;
+    }
+
+    final participant = state!.participants[participantIndex];
 
     final updatedParticipants = state!.participants
         .where((p) => p.peerId != peerId)

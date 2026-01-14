@@ -17,6 +17,11 @@ export default {
       });
     }
 
+    // TURN credentials endpoint
+    if (url.pathname === '/turn-credentials') {
+      return generateTurnCredentials(env);
+    }
+
     // CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, {
@@ -199,5 +204,53 @@ export class SignalingRoom {
     console.log(`Peer ${peer.id} left. Room size: ${this.peers.size}`);
 
     peer.id = null;
+  }
+}
+
+/**
+ * Generate short-lived TURN credentials from Cloudflare
+ */
+async function generateTurnCredentials(env) {
+  try {
+    const response = await fetch(
+      `https://rtc.live.cloudflare.com/v1/turn/keys/${env.TURN_KEY_ID}/credentials/generate`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${env.TURN_KEY_API_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ttl: 86400 }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('TURN API error:', response.status, errorText);
+      return new Response(JSON.stringify({ error: 'Failed to generate TURN credentials' }), {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
+    }
+
+    const data = await response.json();
+    return new Response(JSON.stringify(data), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
+    });
+  } catch (error) {
+    console.error('TURN credentials error:', error);
+    return new Response(JSON.stringify({ error: 'Failed to generate TURN credentials' }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
+    });
   }
 }

@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:http/http.dart' as http;
 
 import 'p2p_message.dart';
 import 'peer_connection.dart';
@@ -14,12 +16,67 @@ class P2PManager {
   final Map<String, PeerConnection> _peers = {};
   String? _localPeerId;
   String? _localDisplayName;
+  Map<String, dynamic>? _iceServersConfig;
 
   final _messageController = StreamController<P2PMessage>.broadcast();
   final _connectionStateController = StreamController<P2PConnectionEvent>.broadcast();
   StreamSubscription<SignalingMessage>? _signalingSubscription;
 
   P2PManager({required this.signalingServerUrl});
+
+  /// Fetch TURN credentials from the signaling server.
+  Future<Map<String, dynamic>?> _fetchTurnCredentials() async {
+    try {
+      // Convert WebSocket URL to HTTP URL for credentials endpoint
+      final httpUrl = signalingServerUrl
+          .replaceFirst('wss://', 'https://')
+          .replaceFirst('ws://', 'http://');
+      final baseUrl = httpUrl.endsWith('/') ? httpUrl.substring(0, httpUrl.length - 1) : httpUrl;
+
+      final response = await http.get(Uri.parse('$baseUrl/turn-credentials'));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return _buildIceServersConfig(data);
+      } else {
+        print('Failed to fetch TURN credentials: ${response.statusCode}');
+        return null;
+      }
+    } catch (error) {
+      print('Error fetching TURN credentials: $error');
+      return null;
+    }
+  }
+
+  /// Build ICE servers configuration from Cloudflare TURN response.
+  Map<String, dynamic> _buildIceServersConfig(Map<String, dynamic> turnData) {
+    final iceServers = turnData['iceServers'] as Map<String, dynamic>?;
+    if (iceServers == null) {
+      return defaultWebRtcConfiguration;
+    }
+
+    final urls = iceServers['urls'] as List<dynamic>?;
+    final username = iceServers['username'] as String?;
+    final credential = iceServers['credential'] as String?;
+
+    if (urls == null || urls.isEmpty) {
+      return defaultWebRtcConfiguration;
+    }
+
+    return {
+      'iceServers': [
+        // Keep STUN servers as fallback
+        {'urls': 'stun:stun.l.google.com:19302'},
+        {'urls': 'stun:stun1.l.google.com:19302'},
+        // Add TURN servers with credentials
+        {
+          'urls': urls.cast<String>(),
+          'username': username,
+          'credential': credential,
+        },
+      ],
+    };
+  }
 
   /// Stream of P2P messages from all peers.
   Stream<P2PMessage> get messages => _messageController.stream;
@@ -41,6 +98,14 @@ class P2PManager {
   }) async {
     _localPeerId = peerId;
     _localDisplayName = displayName;
+
+    // Fetch TURN credentials before connecting
+    _iceServersConfig = await _fetchTurnCredentials();
+    if (_iceServersConfig != null) {
+      print('TURN credentials fetched successfully');
+    } else {
+      print('Using STUN-only configuration (TURN unavailable)');
+    }
 
     _signalingClient = SignalingClient(serverUrl: signalingServerUrl);
 
@@ -167,6 +232,7 @@ class P2PManager {
       onConnectionState: (state) {
         _handleConnectionStateChange(peerId, state);
       },
+      iceServers: _iceServersConfig,
     );
 
     _peers[peerId] = peerConnection;
@@ -197,6 +263,7 @@ class P2PManager {
         onConnectionState: (state) {
           _handleConnectionStateChange(peerId, state);
         },
+        iceServers: _iceServersConfig,
       );
 
       _peers[peerId] = peerConnection;

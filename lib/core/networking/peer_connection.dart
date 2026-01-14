@@ -14,8 +14,8 @@ typedef OnConnectionStateCallback = void Function(RTCPeerConnectionState state);
 /// Callback for when an ICE candidate is generated.
 typedef OnIceCandidateCallback = void Function(RTCIceCandidate candidate);
 
-/// WebRTC configuration for peer connections.
-const Map<String, dynamic> webRtcConfiguration = {
+/// Default WebRTC configuration (STUN only - fallback if TURN unavailable).
+const Map<String, dynamic> defaultWebRtcConfiguration = {
   'iceServers': [
     {'urls': 'stun:stun.l.google.com:19302'},
     {'urls': 'stun:stun1.l.google.com:19302'},
@@ -29,6 +29,7 @@ class PeerConnection {
   final OnMessageCallback onMessage;
   final OnConnectionStateCallback? onConnectionState;
   final OnIceCandidateCallback onIceCandidate;
+  final Map<String, dynamic> iceServersConfig;
 
   RTCPeerConnection? _peerConnection;
   RTCDataChannel? _dataChannel;
@@ -40,7 +41,8 @@ class PeerConnection {
     required this.onMessage,
     required this.onIceCandidate,
     this.onConnectionState,
-  });
+    Map<String, dynamic>? iceServers,
+  }) : iceServersConfig = iceServers ?? defaultWebRtcConfiguration;
 
   /// Whether the data channel is open and ready for messages.
   bool get isConnected =>
@@ -48,7 +50,7 @@ class PeerConnection {
 
   /// Initialize the peer connection.
   Future<void> initialize() async {
-    _peerConnection = await createPeerConnection(webRtcConfiguration);
+    _peerConnection = await createPeerConnection(iceServersConfig);
 
     _peerConnection!.onIceCandidate = (candidate) {
       onIceCandidate(candidate);
