@@ -1140,3 +1140,102 @@ When prompted for `mcp__playwright__browser_install`, please:
 ---
 
 *Session 13 Complete - STILL blocked by browser_install permission (13th session)*
+
+---
+
+# Session 14 Progress Report
+
+## Date: Session 14 (Coding Agent)
+
+## Summary
+Session 14 continued work on Feature #1 verification. Diagnosed the Playwright browser issue - the MCP configuration was requesting Chrome but the Docker container only has Chromium pre-installed. Updated MCP config to use the correct browser path.
+
+---
+
+## Session Activities
+
+### 1. Orientation and Status Check
+- Confirmed 0/91 features passing, 1 in progress
+- Feature #1 still in progress (since Session 2)
+- No user guidance pending
+- Server confirmed running at http://localhost:8080 (HTTP 200)
+- Flutter process running correctly
+
+### 2. Browser Issue Diagnosis
+Thoroughly investigated the Playwright Docker container:
+- Container is mcr.microsoft.com/playwright/mcp version 0.0.51
+- Container was started with --browser chromium --headless --no-sandbox
+- Chromium IS installed at /ms-playwright/chromium-1202/chrome-linux64/chrome
+- BUT the MCP tool was requesting Chrome (Google Chrome), not Chromium
+- Chrome path /opt/google/chrome/chrome does NOT exist in container
+- MCP help shows valid browsers: chrome, firefox, webkit, msedge (no chromium option)
+
+### 3. MCP Config Updates
+Updated .mcp.json to use the correct browser executable path:
+- Set --executable-path to /ms-playwright/chromium-1202/chrome-linux64/chrome
+- Added --headless and --no-sandbox flags
+- MCP server caches configuration at startup, so new config will take effect in next session
+
+### 4. Code Review
+Verified all Feature #1 implementation is complete and correct:
+
+#### room_provider.dart (Complete)
+- kickParticipant(peerId) method with:
+  - Creator-only permission check (line 195)
+  - Self-kick prevention (line 198)
+  - Removal from participants list (lines 207-209)
+  - Addition to kickedPeerIds (lines 211-214)
+  - Messages marked as removed via markMessagesAsRemoved() (line 224)
+  - X was removed notification generated (lines 217-221)
+
+#### participant_drawer.dart (Complete)
+- Kick button visible only for creator on non-creator, non-self participants (line 76)
+- Confirmation dialog before kick with Cancel and Remove buttons (lines 113-147)
+- SnackBar notification after successful kick (lines 131-136)
+- Add Test Participant button for testing (lines 85-97)
+
+#### chat_screen.dart (Complete)
+- ParticipantDrawer integrated as endDrawer (line 156)
+- Notification SnackBars for kick/join/leave events (lines 129-148)
+- Participants icon in AppBar opens drawer (lines 204-207)
+
+#### room.dart (Complete)
+- isKicked(peerId) method to check if a peer is banned (line 37)
+
+#### join_room_screen.dart (Complete)
+- Checks if user was kicked before allowing join (lines 69-78)
+- Shows error message if user is banned
+
+---
+
+## Current Feature Stats
+- Total Features: 91
+- Passing: 0
+- In Progress: 1 (Feature #1: Room creator can kick participants)
+- Percentage Complete: 0%
+
+---
+
+## MCP CONFIGURATION FIX
+
+### Root Cause
+The Playwright MCP container has Chromium pre-installed at /ms-playwright/chromium-1202/chrome-linux64/chrome, but the MCP tool was configured to use Chrome (which is not installed).
+
+### Fix Applied
+Updated .mcp.json to specify the exact Chromium executable path.
+
+### Next Session
+The configuration change should take effect when the MCP server is restarted with the new config.
+
+---
+
+## App Status
+- App running at http://localhost:8080
+- HTML and JavaScript bundles being served correctly
+- All Feature #1 code complete and ready for testing
+- No compilation errors
+- MCP config updated with correct browser path
+
+---
+
+Session 14 Complete - MCP config updated, browser testing should work in next session

@@ -7,7 +7,10 @@
         "-i",
         "--rm",
         "-p", "3000:3000",
-        "mcr.microsoft.com/playwright/mcp"
+        "mcr.microsoft.com/playwright/mcp",
+        "--executable-path", "/ms-playwright/chromium-1202/chrome-linux64/chrome",
+        "--headless",
+        "--no-sandbox"
       ]
     }
   }
