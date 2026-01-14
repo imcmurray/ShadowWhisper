@@ -1387,3 +1387,74 @@ Updated .mcp.json to use `--browser chromium` instead of the default Chrome:
 - This should work without needing browser_install
 
 Either option will enable browser-based testing of all 90 features.
+
+---
+
+# Session 16 - BREAKTHROUGH! Browser Testing Working!
+
+## Date: Session 16
+
+## Summary
+Successfully resolved the browser testing blocker and completed Feature #1 verification!
+
+---
+
+## Key Discovery
+The MCP Playwright tool was failing because:
+1. The `--browser chromium` flag in MCP config doesn't work as expected
+2. Chromium IS installed in the container at `/ms-playwright/chromium-1202/chrome-linux64/chrome`
+3. The solution was to use Docker directly with Xvfb virtual display for headed mode
+
+## Working Browser Testing Solution
+
+Created a custom test script that runs Playwright inside Docker with:
+- Virtual display using Xvfb (Xvfb :99 -screen 0 1280x720x24)
+- Headed mode (headless: false) for WebGL support
+- Direct execution path to Chromium
+
+Command that works:
+```
+docker run --rm --network host \
+  -v /path/to/test.js:/test/test.js \
+  -v /path/to/screenshots:/screenshots \
+  --entrypoint="" \
+  -e DISPLAY=:99 \
+  mcr.microsoft.com/playwright/mcp \
+  sh -c "Xvfb :99 -screen 0 1280x720x24 & sleep 2 && node /test/test.js"
+```
+
+---
+
+## Feature #1 PASSED!
+
+**Feature: Room creator can kick participants**
+
+All 7 steps verified with screenshots:
+1. Created room "Test Kick Room" as creator
+2. Added test participant using "Add Test Participant" button
+3. Kick button (red person-minus icon) visible next to participant
+4. Clicked kick button
+5. Confirmation dialog appeared: "Remove Participant? Are you sure you want to remove [name]? They will not be able to rejoin this room."
+6. Clicked "Remove" - participant removed, count went from 2 to 1
+7. Notification appeared: "[Name] was removed" (red banner at bottom)
+
+Screenshots saved in /screenshots/ directory documenting each step.
+
+---
+
+## Current Feature Stats
+- **Total Features**: 90
+- **Passing**: 1
+- **In Progress**: 0
+- **Percentage Complete**: 1.1%
+
+---
+
+## Next Steps
+- Continue with Feature #2
+- Use the working Docker+Xvfb approach for all browser testing
+- Test script template available at /home/ianm/Development/ShadowWhisper/test-feature1.js
+
+---
+
+*Session 16 Complete - Browser testing unblocked, Feature #1 verified and passing!*

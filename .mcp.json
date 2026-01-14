@@ -8,7 +8,7 @@
         "--rm",
         "--network", "host",
         "mcr.microsoft.com/playwright/mcp",
-        "--browser", "chromium",
+        "--executable-path", "/ms-playwright/chromium-1202/chrome-linux64/chrome",
         "--headless",
         "--no-sandbox"
       ]
