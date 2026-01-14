@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker-compose:*)",
+      "Bash(flutter analyze:*)",
+      "Bash(export PATH=\"$HOME/flutter/bin:$PATH\")",
+      "Bash(flutter build:*)",
+      "Bash(docker compose:*)",
+      "Bash(docker compose up:*)",
+      "WebFetch(domain:pixabay.com)",
+      "Bash(flutter pub get:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(git ls-files:*)",
+      "WebFetch(domain:imcmurray.github.io)",
+      "Bash(flutter create:*)",
+      "Bash(git -C /home/ianm/Development/TaskRiver status)",
+      "Bash(git -C /home/ianm/Development/TaskRiver add .gitignore .metadata web/)",
+      "Bash(git -C /home/ianm/Development/TaskRiver commit -m \"$\\(cat <<''EOF''\nAdd Flutter web platform support.\nEOF\n\\)\")",
+      "Bash(git -C /home/ianm/Development/TaskRiver push)",
+      "Bash(magick:*)",
+      "Bash(git -C /home/ianm/Development/TaskRiver diff --stat)",
+      "Bash(git -C /home/ianm/Development/TaskRiver log --oneline -5)",
+      "Bash(git -C /home/ianm/Development/TaskRiver status web/icons web/favicon.png)",
+      "Bash(git -C /home/ianm/Development/TaskRiver check-ignore -v web/icons/Icon-512.png web/favicon.png)",
+      "Bash(git -C /home/ianm/Development/TaskRiver add .gitignore lib/presentation/screens/onboarding_screen.dart lib/main.dart lib/presentation/providers/settings_provider.dart macos/Runner/Configs/AppInfo.xcconfig web/index.html web/manifest.json web/favicon.png web/icons/ windows/runner/Runner.rc)",
+      "Bash(git -C /home/ianm/Development/TaskRiver commit -m \"$\\(cat <<''EOF''\nAdd onboarding screen and polish branding.\nEOF\n\\)\")",
+      "Bash(git -C /home/ianm/Development/TaskRiver add assets/branding/timeflow-logo-maskable.svg assets/branding/timeflow-logo.svg assets/images/timeflow-logo.png web/favicon.png web/icons/)",
+      "Bash(git -C /home/ianm/Development/TaskRiver commit -m \"$\\(cat <<''EOF''\nUpdate logo with new tf flow design.\nEOF\n\\)\")",
+      "Bash(tree:*)",
+      "Skill(commit)",
+      "Bash(git -C /home/ianm/Development/TaskRiver add lib/data/datasources/database.dart lib/data/datasources/database.g.dart lib/data/repositories/task_repository.dart lib/domain/entities/task.dart lib/main.dart lib/presentation/providers/task_provider.dart lib/presentation/screens/settings_screen.dart lib/presentation/screens/share_screen.dart lib/presentation/screens/task_detail_screen.dart lib/presentation/widgets/calendar_overview.dart lib/presentation/widgets/timeline_view.dart pubspec.yaml pubspec.lock)"
+    ]
+  }
+}

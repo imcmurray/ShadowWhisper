@@ -6,7 +6,7 @@
         "run",
         "-i",
         "--rm",
-        "-p", "3000:3000",
+        "--network", "host",
         "mcr.microsoft.com/playwright/mcp",
         "--executable-path", "/ms-playwright/chromium-1202/chrome-linux64/chrome",
         "--headless",

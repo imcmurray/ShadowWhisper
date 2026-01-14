@@ -1239,3 +1239,108 @@ The configuration change should take effect when the MCP server is restarted wit
 ---
 
 Session 14 Complete - MCP config updated, browser testing should work in next session
+
+---
+
+# Session 15 Progress Report
+
+## Date: Session 15 (Coding Agent)
+
+## Summary
+Session 15 continued attempting to verify Feature #1. The server was started successfully and the app is running at http://localhost:8080. Browser testing remains blocked due to the Playwright MCP browser installation permission not being granted.
+
+---
+
+## Session Activities
+
+### 1. Orientation and Status Check
+- Confirmed 0/90 features passing, 0 in progress (Feature #1 was cleared from previous session)
+- Marked Feature #1 as in progress
+- No user guidance pending
+- Server was not running initially - started it via init.sh
+
+### 2. Server Status
+- Started Flutter development server via init.sh
+- Server confirmed running at http://localhost:8080 (HTTP 200)
+- Flutter process running correctly
+
+### 3. Browser Configuration
+- Checked Playwright MCP Docker container - Chromium IS installed at /ms-playwright/chromium-1202/chrome-linux64/chrome
+- Updated .mcp.json to use --executable-path and --network host
+- MCP server configuration changes require server restart to take effect
+- Error still shows it's looking for Chrome at /opt/google/chrome/chrome (old config)
+
+### 4. Code Review
+Verified all Feature #1 implementation is complete and correct:
+
+#### room_provider.dart (Complete)
+- kickParticipant(peerId) method with:
+  - Creator-only permission check (line 195)
+  - Self-kick prevention (line 198)
+  - Removal from participants list (lines 207-209)
+  - Addition to kickedPeerIds (lines 211-214)
+  - Messages marked as removed via markMessagesAsRemoved() (line 224)
+  - "X was removed" notification generated (lines 217-221)
+
+#### participant_drawer.dart (Complete)
+- Kick button visible only for creator on non-creator, non-self participants (line 76)
+- Confirmation dialog before kick with "Cancel" and "Remove" buttons (lines 113-147)
+- SnackBar notification after successful kick (lines 131-136)
+- "Add Test Participant" button for testing (lines 85-97)
+
+#### chat_screen.dart (Complete)
+- ParticipantDrawer integrated as endDrawer (line 156)
+- Notification SnackBars for kick/join/leave events (lines 129-148)
+- Participants icon in AppBar opens drawer (lines 204-207)
+
+#### room.dart (Complete)
+- isKicked(peerId) method to check if a peer is banned (line 37)
+
+#### join_room_screen.dart (Complete)
+- Checks if user was kicked before allowing join
+
+### 5. Browser Testing Attempts
+- Attempted `mcp__playwright__browser_navigate` - Failed: Chrome not found at /opt/google/chrome/chrome
+- Attempted `mcp__playwright__browser_install` - Permission NOT granted
+- This is session 15 and browser testing still blocked
+
+---
+
+## Current Feature Stats
+- **Total Features**: 90
+- **Passing**: 0
+- **In Progress**: 1 (Feature #1: Room creator can kick participants)
+- **Percentage Complete**: 0%
+
+---
+
+## CRITICAL BLOCKER (15 SESSIONS NOW)
+
+### Browser Installation Permission Required
+
+The `mcp__playwright__browser_install` permission MUST be granted to proceed with ANY browser-based verification.
+
+**Current State:**
+- Chromium IS installed in Docker container at /ms-playwright/chromium-1202/chrome-linux64/chrome
+- MCP tool is configured to use Chrome (which doesn't exist) instead of the installed Chromium
+- MCP configuration has been updated but MCP server needs restart to pick up new config
+- The `browser_install` MCP tool can install Chrome
+
+**ACTION REQUIRED:**
+Please grant the `mcp__playwright__browser_install` permission when prompted. This will:
+1. Install Chrome in the Playwright Docker container
+2. Allow browser-based testing to proceed
+3. Unblock verification of all 90 features
+
+---
+
+## App Status
+- ✅ App running at http://localhost:8080
+- ✅ HTML and JavaScript bundles being served correctly
+- ✅ All Feature #1 code complete and ready for testing
+- ✅ No compilation errors
+- ✅ MCP config updated with --executable-path pointing to Chromium
+
+---
+
+*Session 15 Complete - Still blocked by browser_install permission (15th session)*
