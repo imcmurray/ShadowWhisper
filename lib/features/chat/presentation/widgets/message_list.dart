@@ -66,6 +66,17 @@ class _MessageListState extends ConsumerState<MessageList> {
         final showSenderInfo = index == 0 ||
             messages[index - 1].senderPeerId != message.senderPeerId;
 
+        // Automatically mark messages from other users as seen
+        if (message.senderPeerId != currentPeerId &&
+            !message.seenBy.contains(currentPeerId)) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            ref.read(messagesProvider.notifier).markAsSeen(
+              message.messageId,
+              currentPeerId,
+            );
+          });
+        }
+
         return _MessageBubble(
           message: message,
           currentPeerId: currentPeerId,
