@@ -10,6 +10,7 @@ import 'widgets/message_list.dart';
 import 'widgets/participant_drawer.dart';
 import 'widgets/blur_overlay.dart';
 import 'widgets/shadow_mode_indicator.dart';
+import 'widgets/typing_indicator.dart';
 
 /// Main chat screen for the room.
 ///
@@ -164,6 +165,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
               const Expanded(
                 child: MessageList(),
               ),
+
+              // Typing indicator
+              const TypingIndicator(),
 
               // Chat input
               const ChatInput(),

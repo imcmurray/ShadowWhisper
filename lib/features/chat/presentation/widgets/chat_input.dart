@@ -21,6 +21,7 @@ class _ChatInputState extends ConsumerState<ChatInput> {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
   bool _isSending = false;
+  bool _wasTyping = false;
   static const int _maxLength = 500;
 
   @override
@@ -31,6 +32,8 @@ class _ChatInputState extends ConsumerState<ChatInput> {
 
   @override
   void dispose() {
+    // Clear typing status when disposing
+    _setTypingStatus(false);
     _controller.removeListener(_onTextChanged);
     _controller.dispose();
     _focusNode.dispose();
@@ -39,6 +42,18 @@ class _ChatInputState extends ConsumerState<ChatInput> {
 
   void _onTextChanged() {
     setState(() {});
+
+    // Update typing status
+    final isTyping = _controller.text.isNotEmpty;
+    if (isTyping != _wasTyping) {
+      _wasTyping = isTyping;
+      _setTypingStatus(isTyping);
+    }
+  }
+
+  void _setTypingStatus(bool isTyping) {
+    final peerId = ref.read(currentPeerIdProvider);
+    ref.read(roomProvider.notifier).setTyping(peerId, isTyping);
   }
 
   bool get _canSend {
@@ -69,6 +84,10 @@ class _ChatInputState extends ConsumerState<ChatInput> {
     );
 
     _controller.clear();
+
+    // Clear typing status since message was sent
+    _wasTyping = false;
+    _setTypingStatus(false);
 
     setState(() {
       _isSending = false;
