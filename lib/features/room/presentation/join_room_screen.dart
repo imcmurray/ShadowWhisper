@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../providers/room_provider.dart';
 
 /// Screen for joining an existing chat room.
 ///
 /// Allows users to enter a room code and generates ZK proof
 /// to verify code knowledge without revealing it.
-class JoinRoomScreen extends StatefulWidget {
+class JoinRoomScreen extends ConsumerStatefulWidget {
   const JoinRoomScreen({super.key});
 
   @override
-  State<JoinRoomScreen> createState() => _JoinRoomScreenState();
+  ConsumerState<JoinRoomScreen> createState() => _JoinRoomScreenState();
 }
 
-class _JoinRoomScreenState extends State<JoinRoomScreen> {
+class _JoinRoomScreenState extends ConsumerState<JoinRoomScreen> {
   final _formKey = GlobalKey<FormState>();
   final _roomCodeController = TextEditingController();
   bool _isJoining = false;
@@ -63,8 +65,32 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
       return;
     }
 
-    // TODO: Actual room lookup and ZK verification
-    // For now, simulate success and navigate to chat
+    // Check if user was kicked from this room
+    final currentPeerId = ref.read(currentPeerIdProvider);
+    final isKicked = ref.read(roomProvider.notifier).isPeerKicked(currentPeerId);
+
+    if (isKicked) {
+      setState(() {
+        _isJoining = false;
+        _errorMessage = 'You have been removed from this room and cannot rejoin';
+      });
+      return;
+    }
+
+    // Try to join the room
+    final success = ref.read(roomProvider.notifier).joinRoom(
+      roomCode: roomCode,
+      roomName: 'Room',
+    );
+
+    if (!success) {
+      setState(() {
+        _isJoining = false;
+        _errorMessage = 'You have been removed from this room and cannot rejoin';
+      });
+      return;
+    }
+
     if (!mounted) return;
 
     // Navigate to chat (or waiting room if approval required)
