@@ -1344,3 +1344,46 @@ Please grant the `mcp__playwright__browser_install` permission when prompted. Th
 ---
 
 *Session 15 Complete - Still blocked by browser_install permission (15th session)*
+
+---
+
+## Additional Session 15 Notes
+
+### MCP Configuration Fix Applied
+
+Updated .mcp.json to use `--browser chromium` instead of the default Chrome:
+```json
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "--network", "host",
+        "mcr.microsoft.com/playwright/mcp",
+        "--browser", "chromium",
+        "--headless",
+        "--no-sandbox"
+      ]
+    }
+  }
+}
+```
+
+**IMPORTANT**: The MCP server caches configuration at startup. The new config will only take effect when:
+1. The MCP server process is restarted (happens between sessions or manually)
+2. OR the browser_install permission is granted (one-time)
+
+### What the User Needs to Do
+
+**Option A (Recommended)**: Grant the `mcp__playwright__browser_install` permission
+- This installs Chrome in the Docker container
+- One-time action that unblocks all future browser testing
+
+**Option B**: Restart Claude Code to reload MCP config
+- The new config uses Chromium (pre-installed in Docker)
+- This should work without needing browser_install
+
+Either option will enable browser-based testing of all 90 features.
