@@ -97,7 +97,9 @@ class SignalingClient {
     _peerId = peerId;
     _roomCode = roomCode;
 
-    final uri = Uri.parse(serverUrl);
+    // Include room code in URL path for Durable Object routing
+    final baseUrl = serverUrl.endsWith('/') ? serverUrl.substring(0, serverUrl.length - 1) : serverUrl;
+    final uri = Uri.parse('$baseUrl/room/$roomCode');
     _channel = WebSocketChannel.connect(uri);
 
     _channel!.stream.listen(
