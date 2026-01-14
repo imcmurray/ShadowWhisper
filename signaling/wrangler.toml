@@ -1,0 +1,8 @@
+name = "shadowwhisper-signaling"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Uncomment to use custom domain
+# routes = [
+#   { pattern = "signaling.yourdomain.com/*", zone_name = "yourdomain.com" }
+# ]

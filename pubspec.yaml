@@ -24,6 +24,10 @@ dependencies:
   cupertino_icons: ^1.0.8
   emoji_picker_flutter: ^2.1.1
 
+  # P2P Networking
+  flutter_webrtc: ^0.12.1
+  web_socket_channel: ^3.0.1
+
   # Note: P2P and Tor integration packages
   # These may need custom implementations or web-compatible alternatives:
   # - dart_libp2p: P2P mesh networking via libp2p

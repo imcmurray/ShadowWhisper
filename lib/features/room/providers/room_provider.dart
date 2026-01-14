@@ -571,6 +571,65 @@ class RoomNotifier extends StateNotifier<Room?> {
     return state?.isKicked(peerId) ?? false;
   }
 
+  /// Add a remote participant (received via P2P)
+  void addRemoteParticipant({
+    required String peerId,
+    required String displayName,
+  }) {
+    if (state == null) return;
+
+    // Check if participant already exists
+    if (state!.participants.any((p) => p.peerId == peerId)) {
+      // Update existing participant to online
+      markParticipantReconnected(peerId);
+      return;
+    }
+
+    final participant = Participant(
+      peerId: peerId,
+      displayName: displayName,
+      joinedAt: DateTime.now(),
+      lastSeen: DateTime.now(),
+      isCreator: false,
+      isOnline: true,
+    );
+
+    state = state!.copyWith(
+      participants: [...state!.participants, participant],
+    );
+
+    _ref.read(notificationsProvider.notifier).addNotification(
+      type: RoomNotificationType.participantJoined,
+      message: '$displayName joined the room',
+      peerId: peerId,
+    );
+  }
+
+  /// Remove a remote participant (received via P2P)
+  void removeRemoteParticipant(String peerId) {
+    if (state == null) return;
+
+    final participant = state!.participants.firstWhere(
+      (p) => p.peerId == peerId,
+      orElse: () => throw Exception('Participant not found'),
+    );
+
+    final updatedParticipants = state!.participants
+        .where((p) => p.peerId != peerId)
+        .toList();
+
+    state = state!.copyWith(participants: updatedParticipants);
+
+    _ref.read(notificationsProvider.notifier).addNotification(
+      type: RoomNotificationType.participantLeft,
+      message: '${participant.displayName} left the room',
+      peerId: peerId,
+    );
+
+    // Mark their messages as removed
+    _ref.read(messagesProvider.notifier).markMessagesAsRemoved(peerId);
+  }
+
   /// Approve a pending join request (creator only)
   bool approveJoinRequest(String peerId) {
     if (state == null) return false;

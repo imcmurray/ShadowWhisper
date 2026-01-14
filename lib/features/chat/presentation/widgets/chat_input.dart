@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/networking/p2p_provider.dart';
 import '../../../room/providers/room_provider.dart';
+
+const _uuid = Uuid();
 
 /// Chat input widget with message field, emoji picker, and send button.
 ///
@@ -54,6 +58,7 @@ class _ChatInputState extends ConsumerState<ChatInput> {
   void _setTypingStatus(bool isTyping) {
     final peerId = ref.read(currentPeerIdProvider);
     ref.read(roomProvider.notifier).setTyping(peerId, isTyping);
+    ref.read(p2pProvider.notifier).sendTypingIndicator(isTyping);
   }
 
   bool get _canSend {
@@ -66,7 +71,7 @@ class _ChatInputState extends ConsumerState<ChatInput> {
   Future<void> _sendMessage() async {
     if (!_canSend) return;
 
-    final message = _controller.text.trim();
+    final content = _controller.text.trim();
 
     setState(() {
       _isSending = true;
@@ -75,12 +80,19 @@ class _ChatInputState extends ConsumerState<ChatInput> {
     // Get current user info from providers
     final peerId = ref.read(currentPeerIdProvider);
     final displayName = ref.read(currentDisplayNameProvider);
+    final messageId = _uuid.v4();
 
-    // Add message to the messages provider
+    // Add message to the local messages provider
     ref.read(messagesProvider.notifier).addMessage(
       senderPeerId: peerId,
       senderDisplayName: displayName,
-      content: message,
+      content: content,
+    );
+
+    // Send message via P2P to other participants
+    ref.read(p2pProvider.notifier).sendChatMessage(
+      messageId: messageId,
+      content: content,
     );
 
     _controller.clear();

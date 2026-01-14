@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/networking/p2p_provider.dart';
 import '../../room/providers/room_provider.dart';
 import '../../room/domain/room_notification.dart';
 import '../providers/security_provider.dart';
@@ -66,18 +67,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   }
 
   void _initializeRoom() {
+    final roomCode = widget.args.roomCode ?? 'unknown';
+
     if (widget.args.isCreator) {
       ref.read(roomProvider.notifier).createRoom(
         roomName: widget.args.roomName ?? 'Room',
-        roomCode: widget.args.roomCode ?? 'unknown',
+        roomCode: roomCode,
         approvalMode: widget.args.approvalMode,
       );
     } else {
       ref.read(roomProvider.notifier).joinRoom(
-        roomCode: widget.args.roomCode ?? 'unknown',
+        roomCode: roomCode,
         roomName: widget.args.roomName ?? 'Room',
       );
     }
+
+    // Connect to P2P network
+    ref.read(p2pProvider.notifier).connect(roomCode: roomCode);
   }
 
   @override
@@ -139,6 +145,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   }
 
   void _leaveRoom() {
+    ref.read(p2pProvider.notifier).disconnect();
     ref.read(roomProvider.notifier).leaveRoom();
     Navigator.pushNamedAndRemoveUntil(
       context,
@@ -148,6 +155,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   }
 
   void _endRoom() {
+    ref.read(p2pProvider.notifier).disconnect();
     ref.read(roomProvider.notifier).endRoom();
     Navigator.pushNamedAndRemoveUntil(
       context,
