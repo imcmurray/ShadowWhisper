@@ -24,10 +24,10 @@ class ShadowModeIndicator extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         margin: const EdgeInsets.only(right: 8),
         decoration: BoxDecoration(
-          color: AppColors.shadowMode.withValues(alpha: 0.2),
+          color: AppColors.shadowMode.withOpacity( 0.2),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: AppColors.shadowMode.withValues(alpha: 0.5),
+            color: AppColors.shadowMode.withOpacity( 0.5),
             width: 1,
           ),
         ),

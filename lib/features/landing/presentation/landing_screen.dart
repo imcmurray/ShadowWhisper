@@ -53,7 +53,7 @@ class LandingScreen extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
+            color: AppColors.primary.withOpacity( 0.1),
             shape: BoxShape.circle,
           ),
           child: const Icon(
@@ -103,7 +103,7 @@ class LandingScreen extends StatelessWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.2),
+          color: AppColors.primary.withOpacity( 0.2),
           width: 1,
         ),
       ),
@@ -152,7 +152,7 @@ class LandingScreen extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
+            color: AppColors.primary.withOpacity( 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(

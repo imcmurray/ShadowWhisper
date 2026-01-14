@@ -240,7 +240,7 @@ class _MessageBubble extends ConsumerWidget {
                         _formatTime(message.timestamp),
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                               color: isOwnMessage
-                                  ? AppColors.textPrimary.withValues(alpha: 0.7)
+                                  ? AppColors.textPrimary.withOpacity( 0.7)
                                   : AppColors.textSecondary,
                             ),
                       ),
@@ -255,7 +255,7 @@ class _MessageBubble extends ConsumerWidget {
                           size: 14,
                           color: _isSeen
                               ? AppColors.textPrimary
-                              : AppColors.textPrimary.withValues(alpha: 0.7),
+                              : AppColors.textPrimary.withOpacity( 0.7),
                         ),
                       ],
                     ],

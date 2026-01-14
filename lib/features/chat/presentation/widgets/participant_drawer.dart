@@ -268,7 +268,7 @@ class _ParticipantTile extends StatelessWidget {
         children: [
           CircleAvatar(
             backgroundColor: isDisconnected
-                ? AppColors.warning.withValues(alpha: 0.2)
+                ? AppColors.warning.withOpacity( 0.2)
                 : AppColors.background,
             child: Text(
               participant.displayName[0].toUpperCase(),
@@ -315,7 +315,7 @@ class _ParticipantTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: AppColors.textSecondary.withValues(alpha: 0.2),
+                color: AppColors.textSecondary.withOpacity( 0.2),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
@@ -332,7 +332,7 @@ class _ParticipantTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.2),
+                color: AppColors.primary.withOpacity( 0.2),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
@@ -350,7 +350,7 @@ class _ParticipantTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: AppColors.warning.withValues(alpha: 0.2),
+                color: AppColors.warning.withOpacity( 0.2),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Row(

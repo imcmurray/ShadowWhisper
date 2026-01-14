@@ -39,7 +39,7 @@ class PendingRequestsSection extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppColors.warning.withValues(alpha: 0.2),
+                    color: AppColors.warning.withOpacity( 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -127,7 +127,7 @@ class _PendingRequestTile extends StatelessWidget {
           children: [
             // Avatar
             CircleAvatar(
-              backgroundColor: AppColors.warning.withValues(alpha: 0.2),
+              backgroundColor: AppColors.warning.withOpacity( 0.2),
               radius: 18,
               child: Text(
                 request.displayName[0].toUpperCase(),

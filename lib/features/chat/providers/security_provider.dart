@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Connection state for network status tracking.
-enum ConnectionState {
+enum NetworkConnectionState {
   connected,
   connecting,
   disconnected,
@@ -13,20 +13,20 @@ const int reconnectionGracePeriod = 30;
 
 /// Connection status with user-friendly messaging.
 class ConnectionStatus {
-  final ConnectionState state;
+  final NetworkConnectionState state;
   final String message;
   final DateTime? lastConnected;
   final DateTime? disconnectedAt;
 
   const ConnectionStatus({
-    this.state = ConnectionState.connected,
+    this.state = NetworkNetworkConnectionState.connected,
     this.message = 'Connected to secure mesh',
     this.lastConnected,
     this.disconnectedAt,
   });
 
   ConnectionStatus copyWith({
-    ConnectionState? state,
+    NetworkConnectionState? state,
     String? message,
     DateTime? lastConnected,
     DateTime? disconnectedAt,
@@ -57,23 +57,23 @@ class ConnectionStatus {
   /// User-friendly message for the current connection state
   String get friendlyMessage {
     switch (state) {
-      case ConnectionState.connected:
+      case NetworkNetworkConnectionState.connected:
         return 'Connected securely';
-      case ConnectionState.connecting:
+      case NetworkNetworkConnectionState.connecting:
         return 'Establishing secure connection...';
-      case ConnectionState.disconnected:
+      case NetworkNetworkConnectionState.disconnected:
         final remaining = reconnectionRemainingSeconds;
         if (remaining > 0) {
           return 'Connection lost. Reconnect within ${remaining}s to keep your session.';
         }
         return 'Session expired. You will be removed from the room.';
-      case ConnectionState.reconnecting:
+      case NetworkNetworkConnectionState.reconnecting:
         return 'Reconnecting to secure mesh...';
     }
   }
 
-  bool get isConnected => state == ConnectionState.connected;
-  bool get isDisconnected => state == ConnectionState.disconnected;
+  bool get isConnected => state == NetworkConnectionState.connected;
+  bool get isDisconnected => state == NetworkConnectionState.disconnected;
 }
 
 /// Notifier for connection status management.
@@ -83,7 +83,7 @@ class ConnectionNotifier extends StateNotifier<ConnectionStatus> {
   /// Set connection as established
   void setConnected() {
     state = ConnectionStatus(
-      state: ConnectionState.connected,
+      state: NetworkConnectionState.connected,
       message: 'Connected to secure mesh',
       lastConnected: DateTime.now(),
     );
@@ -92,7 +92,7 @@ class ConnectionNotifier extends StateNotifier<ConnectionStatus> {
   /// Set connection as connecting
   void setConnecting() {
     state = state.copyWith(
-      state: ConnectionState.connecting,
+      state: NetworkConnectionState.connecting,
       message: 'Establishing secure connection...',
     );
   }
@@ -100,7 +100,7 @@ class ConnectionNotifier extends StateNotifier<ConnectionStatus> {
   /// Set connection as disconnected with optional reason
   void setDisconnected({String? reason}) {
     state = state.copyWith(
-      state: ConnectionState.disconnected,
+      state: NetworkConnectionState.disconnected,
       message: reason ?? 'Connection lost. Check your internet connection.',
     );
   }
@@ -108,7 +108,7 @@ class ConnectionNotifier extends StateNotifier<ConnectionStatus> {
   /// Set connection as reconnecting
   void setReconnecting() {
     state = state.copyWith(
-      state: ConnectionState.reconnecting,
+      state: NetworkConnectionState.reconnecting,
       message: 'Reconnecting to secure mesh...',
     );
   }

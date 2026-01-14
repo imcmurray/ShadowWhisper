@@ -19,7 +19,7 @@ class ConnectionBanner extends ConsumerWidget {
     final connectionStatus = ref.watch(connectionProvider);
 
     // Only show banner when not connected normally
-    if (connectionStatus.state == ConnectionState.connected) {
+    if (connectionStatus.state == NetworkConnectionState.connected) {
       return const SizedBox.shrink();
     }
 
@@ -42,7 +42,7 @@ class ConnectionBanner extends ConsumerWidget {
                     ),
               ),
             ),
-            if (connectionStatus.state == ConnectionState.disconnected)
+            if (connectionStatus.state == NetworkConnectionState.disconnected)
               TextButton(
                 onPressed: () {
                   ref.read(connectionProvider.notifier).setReconnecting();
@@ -57,8 +57,8 @@ class ConnectionBanner extends ConsumerWidget {
                 ),
                 child: const Text('Retry'),
               ),
-            if (connectionStatus.state == ConnectionState.connecting ||
-                connectionStatus.state == ConnectionState.reconnecting)
+            if (connectionStatus.state == NetworkConnectionState.connecting ||
+                connectionStatus.state == NetworkConnectionState.reconnecting)
               const SizedBox(
                 width: 16,
                 height: 16,
@@ -73,38 +73,38 @@ class ConnectionBanner extends ConsumerWidget {
     );
   }
 
-  Color _getBackgroundColor(ConnectionState state) {
+  Color _getBackgroundColor(NetworkConnectionState state) {
     switch (state) {
-      case ConnectionState.connected:
+      case NetworkConnectionState.connected:
         return AppColors.success;
-      case ConnectionState.connecting:
-      case ConnectionState.reconnecting:
+      case NetworkConnectionState.connecting:
+      case NetworkConnectionState.reconnecting:
         return AppColors.warning;
-      case ConnectionState.disconnected:
+      case NetworkConnectionState.disconnected:
         return AppColors.error;
     }
   }
 
-  Color _getTextColor(ConnectionState state) {
+  Color _getTextColor(NetworkConnectionState state) {
     switch (state) {
-      case ConnectionState.connected:
+      case NetworkConnectionState.connected:
         return AppColors.textPrimary;
-      case ConnectionState.connecting:
-      case ConnectionState.reconnecting:
+      case NetworkConnectionState.connecting:
+      case NetworkConnectionState.reconnecting:
         return AppColors.background;
-      case ConnectionState.disconnected:
+      case NetworkConnectionState.disconnected:
         return AppColors.textPrimary;
     }
   }
 
-  Widget _getIcon(ConnectionState state) {
+  Widget _getIcon(NetworkConnectionState state) {
     switch (state) {
-      case ConnectionState.connected:
+      case NetworkConnectionState.connected:
         return const Icon(Icons.wifi, color: Colors.white, size: 20);
-      case ConnectionState.connecting:
-      case ConnectionState.reconnecting:
+      case NetworkConnectionState.connecting:
+      case NetworkConnectionState.reconnecting:
         return const Icon(Icons.wifi_find, color: Colors.white, size: 20);
-      case ConnectionState.disconnected:
+      case NetworkConnectionState.disconnected:
         return const Icon(Icons.wifi_off, color: Colors.white, size: 20);
     }
   }
@@ -131,14 +131,14 @@ class ConnectionIndicator extends ConsumerWidget {
     );
   }
 
-  Color _getColor(ConnectionState state) {
+  Color _getColor(NetworkConnectionState state) {
     switch (state) {
-      case ConnectionState.connected:
+      case NetworkConnectionState.connected:
         return AppColors.success;
-      case ConnectionState.connecting:
-      case ConnectionState.reconnecting:
+      case NetworkConnectionState.connecting:
+      case NetworkConnectionState.reconnecting:
         return AppColors.warning;
-      case ConnectionState.disconnected:
+      case NetworkConnectionState.disconnected:
         return AppColors.error;
     }
   }

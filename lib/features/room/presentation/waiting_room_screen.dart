@@ -105,7 +105,7 @@ class _WaitingRoomScreenState extends ConsumerState<WaitingRoomScreen>
                     child: Container(
                       padding: const EdgeInsets.all(32),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
+                        color: AppColors.primary.withOpacity( 0.1),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(

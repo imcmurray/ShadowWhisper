@@ -105,7 +105,7 @@ class _AnimatedTypingDotsState extends State<_AnimatedTypingDots>
               width: 6,
               height: 6,
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: opacity.clamp(0.3, 1.0)),
+                color: AppColors.primary.withOpacity( opacity.clamp(0.3, 1.0)),
                 shape: BoxShape.circle,
               ),
             );

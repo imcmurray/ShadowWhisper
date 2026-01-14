@@ -236,7 +236,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
+            color: AppColors.primary.withOpacity( 0.1),
             shape: BoxShape.circle,
           ),
           child: const Icon(
@@ -270,7 +270,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.3),
+              color: AppColors.primary.withOpacity( 0.3),
               width: 2,
             ),
           ),

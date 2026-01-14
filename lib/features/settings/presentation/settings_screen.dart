@@ -77,7 +77,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background.withValues(alpha: 0.9),
+      backgroundColor: AppColors.background.withOpacity( 0.9),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -294,7 +294,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
+            color: AppColors.primary.withOpacity( 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(

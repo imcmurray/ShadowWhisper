@@ -137,7 +137,7 @@ class _ChatInputState extends ConsumerState<ChatInput> {
         color: AppColors.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
+            color: Colors.black.withOpacity( 0.2),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
@@ -378,7 +378,7 @@ class _EmojiPickerSheetState extends State<_EmojiPickerSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppColors.textSecondary.withValues(alpha: 0.3),
+              color: AppColors.textSecondary.withOpacity( 0.3),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -449,7 +449,7 @@ class _EmojiPickerSheetState extends State<_EmojiPickerSheet> {
                         ),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? AppColors.primary.withValues(alpha: 0.2)
+                              ? AppColors.primary.withOpacity( 0.2)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(20),
                           border: isSelected
