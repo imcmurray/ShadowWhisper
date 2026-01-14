@@ -1,0 +1,19 @@
+{
+  "name": "shadowwhisper",
+  "version": "1.0.0",
+  "description": "**Zero-Trust Anonymous P2P Ephemeral Group Chat**",
+  "main": "test-app.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "playwright": "^1.57.0"
+  }
+}
