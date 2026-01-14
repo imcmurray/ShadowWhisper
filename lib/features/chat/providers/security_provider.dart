@@ -19,7 +19,7 @@ class ConnectionStatus {
   final DateTime? disconnectedAt;
 
   const ConnectionStatus({
-    this.state = NetworkNetworkConnectionState.connected,
+    this.state = NetworkConnectionState.connected,
     this.message = 'Connected to secure mesh',
     this.lastConnected,
     this.disconnectedAt,
@@ -57,17 +57,17 @@ class ConnectionStatus {
   /// User-friendly message for the current connection state
   String get friendlyMessage {
     switch (state) {
-      case NetworkNetworkConnectionState.connected:
+      case NetworkConnectionState.connected:
         return 'Connected securely';
-      case NetworkNetworkConnectionState.connecting:
+      case NetworkConnectionState.connecting:
         return 'Establishing secure connection...';
-      case NetworkNetworkConnectionState.disconnected:
+      case NetworkConnectionState.disconnected:
         final remaining = reconnectionRemainingSeconds;
         if (remaining > 0) {
           return 'Connection lost. Reconnect within ${remaining}s to keep your session.';
         }
         return 'Session expired. You will be removed from the room.';
-      case NetworkNetworkConnectionState.reconnecting:
+      case NetworkConnectionState.reconnecting:
         return 'Reconnecting to secure mesh...';
     }
   }
