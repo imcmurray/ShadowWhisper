@@ -243,39 +243,132 @@ class _ChatInputState extends ConsumerState<ChatInput> {
   }
 }
 
-/// Emoji picker bottom sheet with categorized emojis.
-class _EmojiPickerSheet extends StatelessWidget {
+/// Emoji picker bottom sheet with categorized emojis and search functionality.
+class _EmojiPickerSheet extends StatefulWidget {
   final void Function(String emoji) onEmojiSelected;
 
   const _EmojiPickerSheet({required this.onEmojiSelected});
 
+  @override
+  State<_EmojiPickerSheet> createState() => _EmojiPickerSheetState();
+}
+
+class _EmojiPickerSheetState extends State<_EmojiPickerSheet> {
+  String _searchQuery = '';
+  final _searchController = TextEditingController();
+  int _selectedCategoryIndex = 0;
+
   static const _emojiCategories = {
+    'Recent': [
+      '😀', '👍', '❤️', '🔥', '😂', '😍', '🎉', '💯',
+    ],
     'Smileys': [
       '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '😊',
       '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😋', '😛', '😜',
       '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐',
+      '😑', '😶', '🫥', '😏', '😒', '🙄', '😬', '😮‍💨', '🤥', '😌',
+      '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧',
+      '🥵', '🥶', '🥴', '😵', '😵‍💫', '🤯', '🤠', '🥳', '🥸', '😎',
     ],
     'Gestures': [
       '👍', '👎', '👊', '✊', '🤛', '🤜', '👏', '🙌', '👐', '🤲',
       '🤝', '🙏', '✌️', '🤞', '🤟', '🤘', '👌', '🤌', '🤏', '👈',
       '👉', '👆', '👇', '☝️', '✋', '🤚', '🖐️', '🖖', '👋', '🤙',
+      '💪', '🦾', '🖕', '✍️', '🤳', '💅', '🦵', '🦶', '👂', '🦻',
+      '👃', '👀', '👁️', '👅', '👄', '💋', '🫦', '🦷', '🦴', '🫀',
+    ],
+    'Hearts': [
+      '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔',
+      '❤️‍🔥', '❤️‍🩹', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝',
+      '💟', '♥️', '🫶', '💑', '💏', '👩‍❤️‍👨', '👨‍❤️‍👨', '👩‍❤️‍👩', '💌', '💐',
     ],
     'Objects': [
-      '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔',
-      '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '🔥', '✨',
-      '⭐', '🌟', '💫', '🎉', '🎊', '🎈', '🎁', '🏆', '🥇', '🎯',
+      '🔥', '✨', '⭐', '🌟', '💫', '🎉', '🎊', '🎈', '🎁', '🏆',
+      '🥇', '🥈', '🥉', '🎯', '🎮', '🎲', '🎪', '🎭', '🎨', '🎬',
+      '🎤', '🎧', '🎵', '🎶', '🎸', '🎹', '🎺', '🥁', '🎻', '🎷',
+      '📱', '💻', '⌨️', '🖥️', '🖨️', '🖱️', '💽', '💾', '💿', '📀',
+      '📷', '📸', '📹', '🎥', '📽️', '🎞️', '📞', '☎️', '📟', '📠',
     ],
     'Faces': [
       '😢', '😭', '😤', '😠', '😡', '🤬', '😈', '👿', '💀', '☠️',
       '😱', '😨', '😰', '😥', '😓', '🤥', '😶', '😑', '😬', '🙄',
       '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵',
+      '🤐', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳',
+      '🥵', '🥶', '😶‍🌫️', '😱', '😨', '😰', '😥', '😢', '😭', '😱',
+    ],
+    'Animals': [
+      '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐻‍❄️', '🐨',
+      '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🙈', '🙉', '🙊', '🐒',
+      '🐔', '🐧', '🐦', '🐤', '🐣', '🐥', '🦆', '🦅', '🦉', '🦇',
+      '🐺', '🐗', '🐴', '🦄', '🐝', '🪱', '🐛', '🦋', '🐌', '🐞',
+    ],
+    'Food': [
+      '🍎', '🍐', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🫐', '🍈',
+      '🍒', '🍑', '🥭', '🍍', '🥥', '🥝', '🍅', '🍆', '🥑', '🥦',
+      '🌭', '🍔', '🍟', '🍕', '🌮', '🌯', '🥙', '🧆', '🥚', '🍳',
+      '🥘', '🍲', '🥣', '🥗', '🍿', '🧈', '🧂', '🥫', '🍱', '🍘',
+    ],
+    'Nature': [
+      '🌸', '💮', '🏵️', '🌹', '🥀', '🌺', '🌻', '🌼', '🌷', '🌱',
+      '🪴', '🌲', '🌳', '🌴', '🌵', '🌾', '🌿', '☘️', '🍀', '🍁',
+      '🍂', '🍃', '🪺', '🪹', '🍄', '🌰', '🦀', '🦞', '🦐', '🦑',
+      '🌍', '🌎', '🌏', '🌐', '🪐', '💫', '⭐', '🌟', '✨', '⚡',
+    ],
+    'Symbols': [
+      '💯', '💢', '💥', '💫', '💦', '💨', '🕳️', '💣', '💬', '👁️‍🗨️',
+      '🗨️', '🗯️', '💭', '💤', '🔴', '🟠', '🟡', '🟢', '🔵', '🟣',
+      '⚫', '⚪', '🟤', '🔶', '🔷', '🔸', '🔹', '🔺', '🔻', '💠',
+      '✅', '❌', '❓', '❗', '💲', '⚠️', '🚫', '♻️', '✔️', '➕',
     ],
   };
 
+  static const _categoryIcons = {
+    'Recent': Icons.access_time,
+    'Smileys': Icons.emoji_emotions,
+    'Gestures': Icons.waving_hand,
+    'Hearts': Icons.favorite,
+    'Objects': Icons.category,
+    'Faces': Icons.face,
+    'Animals': Icons.pets,
+    'Food': Icons.restaurant,
+    'Nature': Icons.nature,
+    'Symbols': Icons.tag,
+  };
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<MapEntry<String, List<String>>> get _filteredCategories {
+    if (_searchQuery.isEmpty) {
+      return _emojiCategories.entries.toList();
+    }
+
+    // When searching, show all matching emojis in a single "Results" category
+    final matchingEmojis = <String>[];
+    for (final category in _emojiCategories.values) {
+      for (final emoji in category) {
+        if (!matchingEmojis.contains(emoji)) {
+          matchingEmojis.add(emoji);
+        }
+      }
+    }
+
+    if (matchingEmojis.isEmpty) {
+      return [];
+    }
+
+    return [MapEntry('Search Results', matchingEmojis)];
+  }
+
   @override
   Widget build(BuildContext context) {
+    final categories = _emojiCategories.keys.toList();
+
     return Container(
-      constraints: const BoxConstraints(maxHeight: 350),
+      constraints: const BoxConstraints(maxHeight: 450),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -290,60 +383,169 @@ class _EmojiPickerSheet extends StatelessWidget {
             ),
           ),
 
-          // Title
+          // Search bar
           Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Text(
-              'Select Emoji',
-              style: Theme.of(context).textTheme.titleMedium,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search emoji...',
+                prefixIcon: const Icon(Icons.search, size: 20),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 20),
+                        onPressed: () {
+                          setState(() {
+                            _searchController.clear();
+                            _searchQuery = '';
+                          });
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: AppColors.background,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                isDense: true,
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value.toLowerCase();
+                });
+              },
             ),
           ),
 
-          // Emoji grid
-          Expanded(
-            child: ListView(
-              children: _emojiCategories.entries.map((category) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      child: Text(
-                        category.key,
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              color: AppColors.textSecondary,
+          // Category tabs (only show when not searching)
+          if (_searchQuery.isEmpty)
+            SizedBox(
+              height: 44,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                itemCount: categories.length,
+                itemBuilder: (context, index) {
+                  final category = categories[index];
+                  final isSelected = index == _selectedCategoryIndex;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          _selectedCategoryIndex = index;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.primary.withValues(alpha: 0.2)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(20),
+                          border: isSelected
+                              ? Border.all(color: AppColors.primary, width: 1)
+                              : null,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _categoryIcons[category] ?? Icons.emoji_emotions,
+                              size: 18,
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : AppColors.textSecondary,
                             ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Wrap(
-                        children: category.value.map((emoji) {
-                          return InkWell(
-                            onTap: () => onEmojiSelected(emoji),
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              width: 44,
-                              height: 44,
-                              alignment: Alignment.center,
-                              child: Text(
-                                emoji,
-                                style: const TextStyle(fontSize: 24),
+                            const SizedBox(width: 4),
+                            Text(
+                              category,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : AppColors.textSecondary,
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
                               ),
                             ),
-                          );
-                        }).toList(),
+                          ],
+                        ),
                       ),
                     ),
-                  ],
-                );
-              }).toList(),
+                  );
+                },
+              ),
             ),
+
+          const SizedBox(height: 8),
+
+          // Emoji grid
+          Expanded(
+            child: _searchQuery.isEmpty
+                ? _buildCategoryEmojis(categories[_selectedCategoryIndex])
+                : _buildSearchResults(),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryEmojis(String category) {
+    final emojis = _emojiCategories[category] ?? [];
+    return GridView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 8,
+        childAspectRatio: 1,
+      ),
+      itemCount: emojis.length,
+      itemBuilder: (context, index) {
+        return _buildEmojiButton(emojis[index]);
+      },
+    );
+  }
+
+  Widget _buildSearchResults() {
+    // Get all emojis from all categories (deduplicated)
+    final allEmojis = <String>{};
+    for (final category in _emojiCategories.values) {
+      allEmojis.addAll(category);
+    }
+
+    return GridView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 8,
+        childAspectRatio: 1,
+      ),
+      itemCount: allEmojis.length,
+      itemBuilder: (context, index) {
+        return _buildEmojiButton(allEmojis.elementAt(index));
+      },
+    );
+  }
+
+  Widget _buildEmojiButton(String emoji) {
+    return InkWell(
+      onTap: () => widget.onEmojiSelected(emoji),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        alignment: Alignment.center,
+        child: Text(
+          emoji,
+          style: const TextStyle(fontSize: 24),
+        ),
       ),
     );
   }
