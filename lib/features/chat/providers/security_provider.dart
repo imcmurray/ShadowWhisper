@@ -8,28 +8,50 @@ enum ConnectionState {
   reconnecting,
 }
 
+/// Reconnection grace period in seconds.
+const int reconnectionGracePeriod = 30;
+
 /// Connection status with user-friendly messaging.
 class ConnectionStatus {
   final ConnectionState state;
   final String message;
   final DateTime? lastConnected;
+  final DateTime? disconnectedAt;
 
   const ConnectionStatus({
     this.state = ConnectionState.connected,
     this.message = 'Connected to secure mesh',
     this.lastConnected,
+    this.disconnectedAt,
   });
 
   ConnectionStatus copyWith({
     ConnectionState? state,
     String? message,
     DateTime? lastConnected,
+    DateTime? disconnectedAt,
+    bool clearDisconnectedAt = false,
   }) {
     return ConnectionStatus(
       state: state ?? this.state,
       message: message ?? this.message,
       lastConnected: lastConnected ?? this.lastConnected,
+      disconnectedAt: clearDisconnectedAt ? null : (disconnectedAt ?? this.disconnectedAt),
     );
+  }
+
+  /// Get remaining seconds in the reconnection grace period
+  int get reconnectionRemainingSeconds {
+    if (disconnectedAt == null) return reconnectionGracePeriod;
+    final elapsed = DateTime.now().difference(disconnectedAt!);
+    final remaining = reconnectionGracePeriod - elapsed.inSeconds;
+    return remaining > 0 ? remaining : 0;
+  }
+
+  /// Check if within reconnection grace period
+  bool get isWithinGracePeriod {
+    if (disconnectedAt == null) return true;
+    return reconnectionRemainingSeconds > 0;
   }
 
   /// User-friendly message for the current connection state
@@ -40,7 +62,11 @@ class ConnectionStatus {
       case ConnectionState.connecting:
         return 'Establishing secure connection...';
       case ConnectionState.disconnected:
-        return 'Connection lost. Check your internet connection.';
+        final remaining = reconnectionRemainingSeconds;
+        if (remaining > 0) {
+          return 'Connection lost. Reconnect within ${remaining}s to keep your session.';
+        }
+        return 'Session expired. You will be removed from the room.';
       case ConnectionState.reconnecting:
         return 'Reconnecting to secure mesh...';
     }
