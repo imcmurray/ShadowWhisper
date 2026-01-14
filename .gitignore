@@ -44,9 +44,12 @@ yarn-error.log*
 
 # Test output
 test-results/
+screenshots/
+test-*.js
 
 # Features database (managed by MCP server)
 features.db
+assistant.db
 
 # LLM working files
 .llm/
