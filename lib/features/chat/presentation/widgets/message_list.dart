@@ -57,14 +57,17 @@ class _MessageListState extends ConsumerState<MessageList> {
       return _buildEmptyState();
     }
 
+    // Filter messages to collapse consecutive removed messages
+    final filteredMessages = _collapseConsecutiveRemovedMessages(messages);
+
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.all(16),
-      itemCount: messages.length,
+      itemCount: filteredMessages.length,
       itemBuilder: (context, index) {
-        final message = messages[index];
+        final message = filteredMessages[index];
         final showSenderInfo = index == 0 ||
-            messages[index - 1].senderPeerId != message.senderPeerId;
+            filteredMessages[index - 1].senderPeerId != message.senderPeerId;
 
         // Automatically mark messages from other users as seen
         if (message.senderPeerId != currentPeerId &&
@@ -84,6 +87,31 @@ class _MessageListState extends ConsumerState<MessageList> {
         );
       },
     );
+  }
+
+  /// Collapse consecutive removed messages into a single placeholder.
+  /// This prevents cluttering the UI with multiple '...' entries.
+  List<ChatMessage> _collapseConsecutiveRemovedMessages(List<ChatMessage> messages) {
+    if (messages.isEmpty) return messages;
+
+    final result = <ChatMessage>[];
+    bool lastWasRemoved = false;
+
+    for (final message in messages) {
+      if (message.isRemoved) {
+        // Only add the first removed message in a consecutive series
+        if (!lastWasRemoved) {
+          result.add(message);
+          lastWasRemoved = true;
+        }
+        // Skip consecutive removed messages
+      } else {
+        result.add(message);
+        lastWasRemoved = false;
+      }
+    }
+
+    return result;
   }
 
   Widget _buildEmptyState() {

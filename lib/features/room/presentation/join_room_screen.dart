@@ -91,6 +91,19 @@ class _JoinRoomScreenState extends ConsumerState<JoinRoomScreen> {
           _errorMessage = 'Room not found';
         });
         return;
+      case JoinResult.pending:
+        // Navigate to waiting room for approval
+        if (!mounted) return;
+        final displayName = ref.read(currentDisplayNameProvider);
+        Navigator.pushReplacementNamed(
+          context,
+          AppRouter.waitingRoom,
+          arguments: WaitingRoomArgs(
+            roomCode: roomCode,
+            displayName: displayName,
+          ),
+        );
+        return;
       case JoinResult.success:
         // Continue to navigate
         break;
@@ -98,7 +111,7 @@ class _JoinRoomScreenState extends ConsumerState<JoinRoomScreen> {
 
     if (!mounted) return;
 
-    // Navigate to chat (or waiting room if approval required)
+    // Navigate to chat
     Navigator.pushReplacementNamed(
       context,
       AppRouter.chat,

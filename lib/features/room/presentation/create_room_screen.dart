@@ -85,6 +85,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
         roomCode: _generatedRoomCode,
         roomName: _roomNameController.text.trim(),
         isCreator: true,
+        approvalMode: _approvalRequired,
       ),
     );
   }

@@ -7,6 +7,8 @@ enum RoomNotificationType {
   participantKicked,
   roomExpired,
   displayNameChanged,
+  joinRequestReceived,
+  joinRequestRejected,
 }
 
 /// Represents a system notification in a room.

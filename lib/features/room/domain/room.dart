@@ -4,6 +4,20 @@ import 'participant.dart';
 /// Maximum number of participants allowed in a room.
 const int maxRoomParticipants = 20;
 
+/// Represents a pending join request in approval mode.
+@immutable
+class JoinRequest {
+  final String peerId;
+  final String displayName;
+  final DateTime requestedAt;
+
+  const JoinRequest({
+    required this.peerId,
+    required this.displayName,
+    required this.requestedAt,
+  });
+}
+
 /// Represents an ephemeral chat room.
 @immutable
 class Room {
@@ -14,6 +28,7 @@ class Room {
   final String creatorPeerId;
   final List<Participant> participants;
   final List<String> kickedPeerIds;
+  final List<JoinRequest> pendingJoinRequests;
   final DateTime createdAt;
 
   const Room({
@@ -24,6 +39,7 @@ class Room {
     this.approvalMode = false,
     this.participants = const [],
     this.kickedPeerIds = const [],
+    this.pendingJoinRequests = const [],
     required this.createdAt,
   });
 
@@ -45,6 +61,12 @@ class Room {
   /// Check if the room is full
   bool get isFull => participants.length >= maxRoomParticipants;
 
+  /// Check if there are pending join requests
+  bool get hasPendingRequests => pendingJoinRequests.isNotEmpty;
+
+  /// Get pending request count
+  int get pendingRequestCount => pendingJoinRequests.length;
+
   Room copyWith({
     String? swarmId,
     String? roomName,
@@ -53,6 +75,7 @@ class Room {
     String? creatorPeerId,
     List<Participant>? participants,
     List<String>? kickedPeerIds,
+    List<JoinRequest>? pendingJoinRequests,
     DateTime? createdAt,
   }) {
     return Room(
@@ -63,6 +86,7 @@ class Room {
       creatorPeerId: creatorPeerId ?? this.creatorPeerId,
       participants: participants ?? this.participants,
       kickedPeerIds: kickedPeerIds ?? this.kickedPeerIds,
+      pendingJoinRequests: pendingJoinRequests ?? this.pendingJoinRequests,
       createdAt: createdAt ?? this.createdAt,
     );
   }

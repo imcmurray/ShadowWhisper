@@ -53,7 +53,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
       ref.read(roomProvider.notifier).createRoom(
         roomName: widget.args.roomName ?? 'Room',
         roomCode: widget.args.roomCode ?? 'unknown',
-        approvalMode: false,
+        approvalMode: widget.args.approvalMode,
       );
     } else {
       ref.read(roomProvider.notifier).joinRoom(
@@ -78,21 +78,36 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   }
 
   void _showLeaveConfirmation() {
+    final isCreator = ref.read(isCreatorProvider);
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Leave Room?'),
-        content: const Text(
-          'Are you sure you want to leave? Your messages will disappear for all participants, and you will have a 30-second lockout before you can rejoin.',
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isCreator ? 'Leave or End Room?' : 'Leave Room?'),
+        content: Text(
+          isCreator
+              ? 'You can leave the room (your messages disappear) or end the room for everyone.'
+              : 'Are you sure you want to leave? Your messages will disappear for all participants, and you will have a 30-second lockout before you can rejoin.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
+          if (isCreator)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                _endRoom();
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.warning,
+              ),
+              child: const Text('End Room'),
+            ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               _leaveRoom();
             },
             style: TextButton.styleFrom(
@@ -107,6 +122,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
 
   void _leaveRoom() {
     ref.read(roomProvider.notifier).leaveRoom();
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      AppRouter.landing,
+      (route) => false,
+    );
+  }
+
+  void _endRoom() {
+    ref.read(roomProvider.notifier).endRoom();
     Navigator.pushNamedAndRemoveUntil(
       context,
       AppRouter.landing,
@@ -182,6 +206,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   }
 
   PreferredSizeWidget _buildAppBar(int participantCount, String roomName) {
+    final pendingCount = ref.watch(pendingRequestCountProvider);
+    final isApprovalMode = ref.watch(roomProvider)?.approvalMode ?? false;
+    final isCreator = ref.watch(isCreatorProvider);
+
     return AppBar(
       automaticallyImplyLeading: false,
       title: Row(
@@ -192,12 +220,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
               children: [
                 Row(
                   children: [
-                    Text(
-                      roomName,
-                      style: Theme.of(context).textTheme.titleMedium,
+                    Flexible(
+                      child: Text(
+                        roomName,
+                        style: Theme.of(context).textTheme.titleMedium,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     const SizedBox(width: 8),
                     const ShadowModeIndicator(),
+                    if (isApprovalMode) ...[
+                      const SizedBox(width: 4),
+                      const _ApprovalModeIndicator(),
+                    ],
                   ],
                 ),
                 Text(
@@ -214,11 +249,40 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
       actions: [
         // Shadow mode toggle (for testing)
         const ShadowModeToggle(),
-        // Participants button
-        IconButton(
-          icon: const Icon(Icons.people_outline),
-          onPressed: _openParticipants,
-          tooltip: 'Participants',
+        // Participants button with pending badge
+        Stack(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.people_outline),
+              onPressed: _openParticipants,
+              tooltip: 'Participants',
+            ),
+            if (isCreator && pendingCount > 0)
+              Positioned(
+                right: 4,
+                top: 4,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: AppColors.warning,
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 18,
+                    minHeight: 18,
+                  ),
+                  child: Text(
+                    '$pendingCount',
+                    style: const TextStyle(
+                      color: AppColors.background,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
         ),
         // Settings button
         IconButton(
@@ -234,6 +298,41 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
           color: AppColors.error,
         ),
       ],
+    );
+  }
+}
+
+/// Small indicator showing approval mode is active.
+class _ApprovalModeIndicator extends StatelessWidget {
+  const _ApprovalModeIndicator();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.verified_user_outlined,
+            size: 10,
+            color: AppColors.warning,
+          ),
+          const SizedBox(width: 2),
+          Text(
+            'Approval',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: AppColors.warning,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 9,
+                ),
+          ),
+        ],
+      ),
     );
   }
 }

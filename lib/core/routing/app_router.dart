@@ -114,11 +114,13 @@ class ChatScreenArgs {
   final String? roomCode;
   final String? roomName;
   final bool isCreator;
+  final bool approvalMode;
 
   const ChatScreenArgs({
     this.roomCode,
     this.roomName,
     this.isCreator = false,
+    this.approvalMode = false,
   });
 }
 

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../providers/room_provider.dart';
 
 /// Waiting room screen for rooms with approval required.
 ///
 /// Displays a pending state while waiting for the room creator
 /// to approve the join request.
-class WaitingRoomScreen extends StatefulWidget {
+class WaitingRoomScreen extends ConsumerStatefulWidget {
   final WaitingRoomArgs args;
 
   const WaitingRoomScreen({
@@ -15,13 +17,14 @@ class WaitingRoomScreen extends StatefulWidget {
   });
 
   @override
-  State<WaitingRoomScreen> createState() => _WaitingRoomScreenState();
+  ConsumerState<WaitingRoomScreen> createState() => _WaitingRoomScreenState();
 }
 
-class _WaitingRoomScreenState extends State<WaitingRoomScreen>
+class _WaitingRoomScreenState extends ConsumerState<WaitingRoomScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  bool _wasRejected = false;
 
   @override
   void initState() {
@@ -34,8 +37,6 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen>
     _pulseAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
-
-    // TODO: Listen for approval/rejection from P2P network
   }
 
   @override
@@ -54,6 +55,40 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Watch for approval status changes
+    final currentPeerId = ref.watch(currentPeerIdProvider);
+    final participants = ref.watch(participantsProvider);
+    final pendingRequests = ref.watch(pendingJoinRequestsProvider);
+
+    // Check if we've been approved (our peerId is now in participants)
+    final isApproved = participants.any((p) => p.peerId == currentPeerId);
+
+    // Check if we've been rejected (our peerId is no longer in pending)
+    final isStillPending = pendingRequests.any((r) => r.peerId == currentPeerId);
+
+    // If approved, navigate to chat
+    if (isApproved) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacementNamed(
+          context,
+          AppRouter.chat,
+          arguments: ChatScreenArgs(
+            roomCode: widget.args.roomCode,
+            roomName: 'Room',
+            isCreator: false,
+          ),
+        );
+      });
+    }
+
+    // If rejected (not in pending and not approved), show rejection message
+    if (!isApproved && !isStillPending && !_wasRejected) {
+      _wasRejected = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showRejectionDialog();
+      });
+    }
+
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -162,6 +197,31 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen>
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showRejectionDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Request Denied'),
+        content: const Text(
+          'The room creator has denied your request to join.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                AppRouter.landing,
+                (route) => false,
+              );
+            },
+            child: const Text('OK'),
+          ),
+        ],
       ),
     );
   }

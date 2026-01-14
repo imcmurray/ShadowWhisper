@@ -10,6 +10,7 @@ const _uuid = Uuid();
 /// Result of attempting to join a room
 enum JoinResult {
   success,
+  pending, // In approval mode, waiting for creator approval
   kicked,
   roomFull,
   notFound,
@@ -82,6 +83,18 @@ final participantCountProvider = Provider<int>((ref) {
   return participants.length;
 });
 
+/// Pending join requests
+final pendingJoinRequestsProvider = Provider<List<JoinRequest>>((ref) {
+  final room = ref.watch(roomProvider);
+  return room?.pendingJoinRequests ?? [];
+});
+
+/// Pending request count
+final pendingRequestCountProvider = Provider<int>((ref) {
+  final requests = ref.watch(pendingJoinRequestsProvider);
+  return requests.length;
+});
+
 /// Room state notifier
 class RoomNotifier extends StateNotifier<Room?> {
   final Ref _ref;
@@ -135,6 +148,29 @@ class RoomNotifier extends StateNotifier<Room?> {
     // Check if room is full
     if (state != null && state!.isFull) {
       return JoinResult.roomFull;
+    }
+
+    // Check if approval mode is enabled
+    if (state != null && state!.approvalMode) {
+      // Add to pending requests instead of joining directly
+      final joinRequest = JoinRequest(
+        peerId: peerId,
+        displayName: displayName,
+        requestedAt: DateTime.now(),
+      );
+
+      state = state!.copyWith(
+        pendingJoinRequests: [...state!.pendingJoinRequests, joinRequest],
+      );
+
+      // Notify creator about new request
+      _ref.read(notificationsProvider.notifier).addNotification(
+        type: RoomNotificationType.joinRequestReceived,
+        message: '$displayName is requesting to join',
+        peerId: peerId,
+      );
+
+      return JoinResult.pending;
     }
 
     final participant = Participant(
@@ -326,6 +362,135 @@ class RoomNotifier extends StateNotifier<Room?> {
   /// Check if a peer ID is kicked from the room
   bool isPeerKicked(String peerId) {
     return state?.isKicked(peerId) ?? false;
+  }
+
+  /// Approve a pending join request (creator only)
+  bool approveJoinRequest(String peerId) {
+    if (state == null) return false;
+
+    final currentPeerId = _ref.read(currentPeerIdProvider);
+
+    // Only creator can approve
+    if (state!.creatorPeerId != currentPeerId) return false;
+
+    // Find the pending request
+    final requestIndex = state!.pendingJoinRequests
+        .indexWhere((r) => r.peerId == peerId);
+    if (requestIndex == -1) return false;
+
+    // Check if room is now full
+    if (state!.isFull) return false;
+
+    final request = state!.pendingJoinRequests[requestIndex];
+
+    // Create participant from request
+    final participant = Participant(
+      peerId: request.peerId,
+      displayName: request.displayName,
+      joinedAt: DateTime.now(),
+      lastSeen: DateTime.now(),
+      isCreator: false,
+      isOnline: true,
+    );
+
+    // Remove from pending and add to participants
+    final updatedRequests = [...state!.pendingJoinRequests]
+      ..removeAt(requestIndex);
+
+    state = state!.copyWith(
+      participants: [...state!.participants, participant],
+      pendingJoinRequests: updatedRequests,
+    );
+
+    // Add join notification
+    _ref.read(notificationsProvider.notifier).addNotification(
+      type: RoomNotificationType.participantJoined,
+      message: '${request.displayName} joined the room',
+      peerId: peerId,
+    );
+
+    return true;
+  }
+
+  /// Reject a pending join request (creator only)
+  bool rejectJoinRequest(String peerId) {
+    if (state == null) return false;
+
+    final currentPeerId = _ref.read(currentPeerIdProvider);
+
+    // Only creator can reject
+    if (state!.creatorPeerId != currentPeerId) return false;
+
+    // Find and remove the pending request
+    final requestIndex = state!.pendingJoinRequests
+        .indexWhere((r) => r.peerId == peerId);
+    if (requestIndex == -1) return false;
+
+    final request = state!.pendingJoinRequests[requestIndex];
+
+    final updatedRequests = [...state!.pendingJoinRequests]
+      ..removeAt(requestIndex);
+
+    state = state!.copyWith(
+      pendingJoinRequests: updatedRequests,
+    );
+
+    // Add notification about rejection
+    _ref.read(notificationsProvider.notifier).addNotification(
+      type: RoomNotificationType.joinRequestRejected,
+      message: '${request.displayName} was denied entry',
+      peerId: peerId,
+    );
+
+    return true;
+  }
+
+  /// Add simulated pending request (for testing)
+  bool addSimulatedJoinRequest(String displayName) {
+    if (state == null) return false;
+    if (!state!.approvalMode) return false;
+
+    final joinRequest = JoinRequest(
+      peerId: _uuid.v4(),
+      displayName: displayName,
+      requestedAt: DateTime.now(),
+    );
+
+    state = state!.copyWith(
+      pendingJoinRequests: [...state!.pendingJoinRequests, joinRequest],
+    );
+
+    _ref.read(notificationsProvider.notifier).addNotification(
+      type: RoomNotificationType.joinRequestReceived,
+      message: '$displayName is requesting to join',
+      peerId: joinRequest.peerId,
+    );
+
+    return true;
+  }
+
+  /// End the room (creator only)
+  /// This immediately terminates the room for all participants
+  bool endRoom() {
+    if (state == null) return false;
+
+    final currentPeerId = _ref.read(currentPeerIdProvider);
+
+    // Only creator can end the room
+    if (state!.creatorPeerId != currentPeerId) return false;
+
+    // Add notification about room ending
+    _ref.read(notificationsProvider.notifier).addNotification(
+      type: RoomNotificationType.roomExpired,
+      message: 'Room has been ended by the creator',
+      peerId: currentPeerId,
+    );
+
+    // Clear all room state
+    state = null;
+    _ref.read(messagesProvider.notifier).clearMessages();
+
+    return true;
   }
 
   /// Clear room state

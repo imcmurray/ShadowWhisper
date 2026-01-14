@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../room/domain/participant.dart';
 import '../../../room/domain/room.dart';
 import '../../../room/providers/room_provider.dart';
+import 'pending_requests_section.dart';
 
 /// Drawer showing the list of room participants.
 ///
@@ -24,6 +25,9 @@ class ParticipantDrawer extends ConsumerWidget {
     final participants = ref.watch(participantsProvider);
     final isCreator = ref.watch(isCreatorProvider);
     final currentPeerId = ref.watch(currentPeerIdProvider);
+    final pendingRequests = ref.watch(pendingJoinRequestsProvider);
+    final room = ref.watch(roomProvider);
+    final isApprovalMode = room?.approvalMode ?? false;
 
     return Drawer(
       backgroundColor: AppColors.surface,
@@ -64,6 +68,12 @@ class ParticipantDrawer extends ConsumerWidget {
               ),
             ),
 
+            // Pending requests section (only for creator in approval mode)
+            if (isCreator && isApprovalMode && pendingRequests.isNotEmpty)
+              PendingRequestsSection(
+                pendingRequests: pendingRequests,
+              ),
+
             // Participant list
             Expanded(
               child: ListView.builder(
@@ -86,14 +96,30 @@ class ParticipantDrawer extends ConsumerWidget {
             if (isCreator)
               Padding(
                 padding: const EdgeInsets.all(16),
-                child: OutlinedButton.icon(
-                  onPressed: () => _addTestParticipant(context, ref),
-                  icon: const Icon(Icons.person_add_outlined),
-                  label: const Text('Add Test Participant'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textSecondary,
-                    side: const BorderSide(color: AppColors.textSecondary),
-                  ),
+                child: Column(
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => _addTestParticipant(context, ref),
+                      icon: const Icon(Icons.person_add_outlined),
+                      label: const Text('Add Test Participant'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textSecondary,
+                        side: const BorderSide(color: AppColors.textSecondary),
+                      ),
+                    ),
+                    if (isApprovalMode) ...[
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: () => _addTestJoinRequest(context, ref),
+                        icon: const Icon(Icons.person_add_alt_outlined),
+                        label: const Text('Simulate Join Request'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.warning,
+                          side: const BorderSide(color: AppColors.warning),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
           ],
@@ -114,6 +140,24 @@ class ParticipantDrawer extends ConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Room is full (maximum $maxRoomParticipants participants)'),
+          backgroundColor: AppColors.warning,
+        ),
+      );
+    }
+  }
+
+  void _addTestJoinRequest(BuildContext context, WidgetRef ref) {
+    final names = [
+      'Curious Owl', 'Wandering Fox', 'Seeking Bear', 'Hopeful Deer',
+      'Eager Rabbit', 'Patient Crow', 'Waiting Wolf', 'Pending Puma',
+    ];
+    final random = DateTime.now().millisecondsSinceEpoch % names.length;
+    final success = ref.read(roomProvider.notifier).addSimulatedJoinRequest(names[random]);
+
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Approval mode is not enabled'),
           backgroundColor: AppColors.warning,
         ),
       );

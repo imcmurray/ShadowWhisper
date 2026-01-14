@@ -97,21 +97,36 @@ class _ChatInputState extends ConsumerState<ChatInput> {
   }
 
   void _showEmojiPicker() {
-    // TODO: Show emoji picker
-    // For now, insert a sample emoji
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => _EmojiPickerSheet(
+        onEmojiSelected: (emoji) {
+          _insertEmoji(emoji);
+          Navigator.pop(context);
+        },
+      ),
+    );
+  }
+
+  void _insertEmoji(String emoji) {
     final selection = _controller.selection;
     final text = _controller.text;
     final newText = text.replaceRange(
       selection.start,
       selection.end,
-      '\u{1F44D}',
+      emoji,
     );
     _controller.value = TextEditingValue(
       text: newText,
       selection: TextSelection.collapsed(
-        offset: selection.start + 2,
+        offset: selection.start + emoji.length,
       ),
     );
+    _focusNode.requestFocus();
   }
 
   @override
@@ -223,6 +238,112 @@ class _ChatInputState extends ConsumerState<ChatInput> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Emoji picker bottom sheet with categorized emojis.
+class _EmojiPickerSheet extends StatelessWidget {
+  final void Function(String emoji) onEmojiSelected;
+
+  const _EmojiPickerSheet({required this.onEmojiSelected});
+
+  static const _emojiCategories = {
+    'Smileys': [
+      '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '😊',
+      '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😋', '😛', '😜',
+      '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐',
+    ],
+    'Gestures': [
+      '👍', '👎', '👊', '✊', '🤛', '🤜', '👏', '🙌', '👐', '🤲',
+      '🤝', '🙏', '✌️', '🤞', '🤟', '🤘', '👌', '🤌', '🤏', '👈',
+      '👉', '👆', '👇', '☝️', '✋', '🤚', '🖐️', '🖖', '👋', '🤙',
+    ],
+    'Objects': [
+      '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔',
+      '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '🔥', '✨',
+      '⭐', '🌟', '💫', '🎉', '🎊', '🎈', '🎁', '🏆', '🥇', '🎯',
+    ],
+    'Faces': [
+      '😢', '😭', '😤', '😠', '😡', '🤬', '😈', '👿', '💀', '☠️',
+      '😱', '😨', '😰', '😥', '😓', '🤥', '😶', '😑', '😬', '🙄',
+      '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵',
+    ],
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 350),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle bar
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.textSecondary.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+
+          // Title
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(
+              'Select Emoji',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+
+          // Emoji grid
+          Expanded(
+            child: ListView(
+              children: _emojiCategories.entries.map((category) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: Text(
+                        category.key,
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Wrap(
+                        children: category.value.map((emoji) {
+                          return InkWell(
+                            onTap: () => onEmojiSelected(emoji),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              width: 44,
+                              height: 44,
+                              alignment: Alignment.center,
+                              child: Text(
+                                emoji,
+                                style: const TextStyle(fontSize: 24),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+        ],
       ),
     );
   }
