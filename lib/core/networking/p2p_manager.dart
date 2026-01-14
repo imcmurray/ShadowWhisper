@@ -232,6 +232,9 @@ class P2PManager {
       onConnectionState: (state) {
         _handleConnectionStateChange(peerId, state);
       },
+      onDataChannelOpen: () {
+        _sendHelloMessage(peerId);
+      },
       iceServers: _iceServersConfig,
     );
 
@@ -262,6 +265,9 @@ class P2PManager {
         },
         onConnectionState: (state) {
           _handleConnectionStateChange(peerId, state);
+        },
+        onDataChannelOpen: () {
+          _sendHelloMessage(peerId);
         },
         iceServers: _iceServersConfig,
       );
@@ -314,14 +320,6 @@ class P2PManager {
     switch (state) {
       case RTCPeerConnectionState.RTCPeerConnectionStateConnected:
         eventType = P2PConnectionEventType.connected;
-        // Send hello message
-        if (_localPeerId != null && _localDisplayName != null) {
-          final hello = P2PMessage.hello(
-            senderId: _localPeerId!,
-            displayName: _localDisplayName!,
-          );
-          _peers[peerId]?.sendMessage(hello);
-        }
         break;
       case RTCPeerConnectionState.RTCPeerConnectionStateDisconnected:
         eventType = P2PConnectionEventType.disconnected;
@@ -340,6 +338,17 @@ class P2PManager {
       peerId: peerId,
       type: eventType,
     ));
+  }
+
+  /// Send hello message to a specific peer when data channel opens.
+  void _sendHelloMessage(String peerId) {
+    if (_localPeerId == null || _localDisplayName == null) return;
+
+    final hello = P2PMessage.hello(
+      senderId: _localPeerId!,
+      displayName: _localDisplayName!,
+    );
+    _peers[peerId]?.sendMessage(hello);
   }
 
   Future<void> _removePeer(String peerId) async {

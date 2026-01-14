@@ -53,6 +53,7 @@ class P2PNotifier extends StateNotifier<P2PProviderState> {
   P2PManager? _manager;
   StreamSubscription<P2PMessage>? _messageSubscription;
   StreamSubscription<P2PConnectionEvent>? _connectionSubscription;
+  bool _isDisposed = false;
 
   P2PNotifier(this._ref) : super(const P2PProviderState());
 
@@ -121,73 +122,90 @@ class P2PNotifier extends StateNotifier<P2PProviderState> {
   }
 
   void _handleMessage(P2PMessage message) {
-    switch (message.type) {
-      case P2PMessageType.hello:
-        // A peer said hello - they're connected
-        final displayName = message.payload['displayName'] as String?;
-        if (displayName != null) {
-          // Add them as a participant if not already present
-          _ref.read(roomProvider.notifier).addRemoteParticipant(
-            peerId: message.senderId,
-            displayName: displayName,
-          );
-        }
-        break;
+    // Guard against callbacks after disposal
+    if (_isDisposed) return;
 
-      case P2PMessageType.goodbye:
-        // A peer is leaving
-        _ref.read(roomProvider.notifier).removeRemoteParticipant(message.senderId);
-        break;
+    try {
+      switch (message.type) {
+        case P2PMessageType.hello:
+          // A peer said hello - they're connected
+          final displayName = message.payload['displayName'] as String?;
+          if (displayName != null) {
+            // Add them as a participant if not already present
+            _ref.read(roomProvider.notifier).addRemoteParticipant(
+              peerId: message.senderId,
+              displayName: displayName,
+            );
+          }
+          break;
 
-      case P2PMessageType.chatMessage:
-        // Received a chat message
-        final content = message.payload['content'] as String?;
-        final displayName = message.payload['displayName'] as String?;
-        if (content != null && displayName != null) {
-          _ref.read(messagesProvider.notifier).addMessage(
-            senderPeerId: message.senderId,
-            senderDisplayName: displayName,
-            content: content,
-          );
-        }
-        break;
+        case P2PMessageType.goodbye:
+          // A peer is leaving
+          _ref.read(roomProvider.notifier).removeRemoteParticipant(message.senderId);
+          break;
 
-      case P2PMessageType.typingStart:
-        _ref.read(roomProvider.notifier).setTyping(message.senderId, true);
-        break;
+        case P2PMessageType.chatMessage:
+          // Received a chat message
+          final content = message.payload['content'] as String?;
+          final displayName = message.payload['displayName'] as String?;
+          if (content != null && displayName != null) {
+            _ref.read(messagesProvider.notifier).addMessage(
+              senderPeerId: message.senderId,
+              senderDisplayName: displayName,
+              content: content,
+            );
+          }
+          break;
 
-      case P2PMessageType.typingStop:
-        _ref.read(roomProvider.notifier).setTyping(message.senderId, false);
-        break;
+        case P2PMessageType.typingStart:
+          _ref.read(roomProvider.notifier).setTyping(message.senderId, true);
+          break;
 
-      default:
-        // Handle other message types as needed
-        break;
+        case P2PMessageType.typingStop:
+          _ref.read(roomProvider.notifier).setTyping(message.senderId, false);
+          break;
+
+        default:
+          // Handle other message types as needed
+          break;
+      }
+    } catch (error) {
+      // Provider might be disposed, ignore errors during cleanup
+      print('Error handling P2P message: $error');
     }
   }
 
   void _handleConnectionEvent(P2PConnectionEvent event) {
-    switch (event.type) {
-      case P2PConnectionEventType.connected:
-        final peers = [...state.connectedPeers, event.peerId];
-        state = state.copyWith(connectedPeers: peers);
-        break;
+    // Guard against callbacks after disposal
+    if (_isDisposed) return;
 
-      case P2PConnectionEventType.disconnected:
-      case P2PConnectionEventType.failed:
-        final peers = state.connectedPeers.where((p) => p != event.peerId).toList();
-        state = state.copyWith(connectedPeers: peers);
-        // Mark participant as disconnected
-        _ref.read(roomProvider.notifier).markParticipantDisconnected(event.peerId);
-        break;
+    try {
+      switch (event.type) {
+        case P2PConnectionEventType.connected:
+          final peers = [...state.connectedPeers, event.peerId];
+          state = state.copyWith(connectedPeers: peers);
+          break;
 
-      default:
-        break;
+        case P2PConnectionEventType.disconnected:
+        case P2PConnectionEventType.failed:
+          final peers = state.connectedPeers.where((p) => p != event.peerId).toList();
+          state = state.copyWith(connectedPeers: peers);
+          // Mark participant as disconnected
+          _ref.read(roomProvider.notifier).markParticipantDisconnected(event.peerId);
+          break;
+
+        default:
+          break;
+      }
+    } catch (error) {
+      // Provider might be disposed, ignore errors during cleanup
+      print('Error handling connection event: $error');
     }
   }
 
   @override
   void dispose() {
+    _isDisposed = true;
     disconnect();
     super.dispose();
   }

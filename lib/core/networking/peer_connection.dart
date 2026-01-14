@@ -14,6 +14,9 @@ typedef OnConnectionStateCallback = void Function(RTCPeerConnectionState state);
 /// Callback for when an ICE candidate is generated.
 typedef OnIceCandidateCallback = void Function(RTCIceCandidate candidate);
 
+/// Callback for when the data channel opens and is ready for messages.
+typedef OnDataChannelOpenCallback = void Function();
+
 /// Default WebRTC configuration (STUN only - fallback if TURN unavailable).
 const Map<String, dynamic> defaultWebRtcConfiguration = {
   'iceServers': [
@@ -29,6 +32,7 @@ class PeerConnection {
   final OnMessageCallback onMessage;
   final OnConnectionStateCallback? onConnectionState;
   final OnIceCandidateCallback onIceCandidate;
+  final OnDataChannelOpenCallback? onDataChannelOpen;
   final Map<String, dynamic> iceServersConfig;
 
   RTCPeerConnection? _peerConnection;
@@ -41,6 +45,7 @@ class PeerConnection {
     required this.onMessage,
     required this.onIceCandidate,
     this.onConnectionState,
+    this.onDataChannelOpen,
     Map<String, dynamic>? iceServers,
   }) : iceServersConfig = iceServers ?? defaultWebRtcConfiguration;
 
@@ -131,6 +136,9 @@ class PeerConnection {
 
     channel.onDataChannelState = (state) {
       print('Data channel state for peer $peerId: $state');
+      if (state == RTCDataChannelState.RTCDataChannelOpen) {
+        onDataChannelOpen?.call();
+      }
     };
   }
 
