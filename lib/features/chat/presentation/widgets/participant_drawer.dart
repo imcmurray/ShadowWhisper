@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../room/domain/participant.dart';
+import '../../../room/providers/room_provider.dart';
 
 /// Drawer showing the list of room participants.
 ///
@@ -7,29 +10,20 @@ import '../../../../core/theme/app_colors.dart';
 /// - Online status indicators
 /// - Creator badge
 /// - Kick button for creators
-class ParticipantDrawer extends StatelessWidget {
-  final bool isCreator;
+class ParticipantDrawer extends ConsumerWidget {
   final VoidCallback onClose;
 
   const ParticipantDrawer({
     super.key,
-    required this.isCreator,
     required this.onClose,
   });
 
-  // TODO: Replace with real participants from Riverpod state
-  List<_Participant> get _participants => [
-        _Participant(
-          id: '1',
-          displayName: 'Anonymous Fox',
-          isOnline: true,
-          isCreator: true,
-          isTyping: false,
-        ),
-      ];
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final participants = ref.watch(participantsProvider);
+    final isCreator = ref.watch(isCreatorProvider);
+    final currentPeerId = ref.watch(currentPeerIdProvider);
+
     return Drawer(
       backgroundColor: AppColors.surface,
       child: SafeArea(
@@ -55,7 +49,7 @@ class ParticipantDrawer extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '${_participants.length}',
+                    '${participants.length}',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -73,40 +67,74 @@ class ParticipantDrawer extends StatelessWidget {
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: _participants.length,
+                itemCount: participants.length,
                 itemBuilder: (context, index) {
-                  final participant = _participants[index];
+                  final participant = participants[index];
+                  final isSelf = participant.peerId == currentPeerId;
                   return _ParticipantTile(
                     participant: participant,
-                    showKickButton: isCreator && !participant.isCreator,
-                    onKick: () => _kickParticipant(context, participant),
+                    showKickButton: isCreator && !participant.isCreator && !isSelf,
+                    isSelf: isSelf,
+                    onKick: () => _kickParticipant(context, ref, participant),
                   );
                 },
               ),
             ),
+
+            // Add test participant button (for development)
+            if (isCreator)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: OutlinedButton.icon(
+                  onPressed: () => _addTestParticipant(ref),
+                  icon: const Icon(Icons.person_add_outlined),
+                  label: const Text('Add Test Participant'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textSecondary,
+                    side: const BorderSide(color: AppColors.textSecondary),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
     );
   }
 
-  void _kickParticipant(BuildContext context, _Participant participant) {
+  void _addTestParticipant(WidgetRef ref) {
+    final names = [
+      'Shadow Wolf', 'Midnight Hawk', 'Silent Panther', 'Phantom Eagle',
+      'Mystic Raven', 'Covert Serpent', 'Stealth Tiger', 'Veiled Lynx',
+    ];
+    final random = DateTime.now().millisecondsSinceEpoch % names.length;
+    ref.read(roomProvider.notifier).addSimulatedParticipant(names[random]);
+  }
+
+  void _kickParticipant(BuildContext context, WidgetRef ref, Participant participant) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Remove Participant?'),
         content: Text(
           'Are you sure you want to remove ${participant.displayName}? They will not be able to rejoin this room.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
-              // TODO: Kick participant via P2P network
+              Navigator.pop(dialogContext);
+              final success = ref.read(roomProvider.notifier).kickParticipant(participant.peerId);
+              if (success) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('${participant.displayName} was removed'),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+              }
             },
             style: TextButton.styleFrom(
               foregroundColor: AppColors.error,
@@ -121,13 +149,15 @@ class ParticipantDrawer extends StatelessWidget {
 
 /// Individual participant tile.
 class _ParticipantTile extends StatelessWidget {
-  final _Participant participant;
+  final Participant participant;
   final bool showKickButton;
+  final bool isSelf;
   final VoidCallback onKick;
 
   const _ParticipantTile({
     required this.participant,
     required this.showKickButton,
+    required this.isSelf,
     required this.onKick,
   });
 
@@ -154,8 +184,7 @@ class _ParticipantTile extends StatelessWidget {
               width: 12,
               height: 12,
               decoration: BoxDecoration(
-                color:
-                    participant.isOnline ? AppColors.online : AppColors.offline,
+                color: participant.isOnline ? AppColors.online : AppColors.offline,
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: AppColors.surface,
@@ -174,6 +203,23 @@ class _ParticipantTile extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          if (isSelf) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.textSecondary.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'You',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+            ),
+          ],
           if (participant.isCreator) ...[
             const SizedBox(width: 8),
             Container(
@@ -212,21 +258,4 @@ class _ParticipantTile extends StatelessWidget {
           : null,
     );
   }
-}
-
-/// Participant model (temporary, will be replaced with proper model).
-class _Participant {
-  final String id;
-  final String displayName;
-  final bool isOnline;
-  final bool isCreator;
-  final bool isTyping;
-
-  _Participant({
-    required this.id,
-    required this.displayName,
-    required this.isOnline,
-    required this.isCreator,
-    required this.isTyping,
-  });
 }
