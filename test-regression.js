@@ -1,8 +1,8 @@
-const { chromium } = require('/app/node_modules/playwright');
+const { chromium } = require('playwright');
 
 async function testRegression() {
   const browser = await chromium.launch({
-    executablePath: '/ms-playwright/chromium-1202/chrome-linux64/chrome',
+    executablePath: '/ms-playwright/chromium-1155/chrome-linux/chrome',
     headless: false,
     args: [
       '--no-sandbox',
