@@ -4,6 +4,40 @@ import 'participant.dart';
 /// Maximum number of participants allowed in a room.
 const int maxRoomParticipants = 20;
 
+/// Grace period for reconnection in seconds.
+const int reconnectionGracePeriodSeconds = 30;
+
+/// Represents a disconnected session that can be reclaimed within the grace period.
+@immutable
+class DisconnectedSession {
+  final String peerId;
+  final String displayName;
+  final String roomCode;
+  final DateTime disconnectedAt;
+  final bool wasCreator;
+
+  const DisconnectedSession({
+    required this.peerId,
+    required this.displayName,
+    required this.roomCode,
+    required this.disconnectedAt,
+    this.wasCreator = false,
+  });
+
+  /// Check if this session is still within the grace period
+  bool get isWithinGracePeriod {
+    final elapsed = DateTime.now().difference(disconnectedAt);
+    return elapsed.inSeconds < reconnectionGracePeriodSeconds;
+  }
+
+  /// Get remaining seconds in grace period
+  int get remainingSeconds {
+    final elapsed = DateTime.now().difference(disconnectedAt);
+    final remaining = reconnectionGracePeriodSeconds - elapsed.inSeconds;
+    return remaining > 0 ? remaining : 0;
+  }
+}
+
 /// Represents a pending join request in approval mode.
 @immutable
 class JoinRequest {

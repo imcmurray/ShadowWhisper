@@ -105,8 +105,28 @@ class _JoinRoomScreenState extends ConsumerState<JoinRoomScreen> {
         );
         return;
       case JoinResult.success:
-        // Continue to navigate
+        // Continue to navigate as new join
         break;
+      case JoinResult.reconnected:
+        // Reconnected within grace period - show message and navigate
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Reconnected successfully!'),
+            backgroundColor: AppColors.success,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        Navigator.pushReplacementNamed(
+          context,
+          AppRouter.chat,
+          arguments: ChatScreenArgs(
+            roomCode: roomCode,
+            roomName: 'Room',
+            isCreator: false,
+          ),
+        );
+        return;
     }
 
     if (!mounted) return;

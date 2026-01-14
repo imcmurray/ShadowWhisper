@@ -10,6 +10,7 @@ const _uuid = Uuid();
 /// Result of attempting to join a room
 enum JoinResult {
   success,
+  reconnected, // Successful reconnection within grace period
   pending, // In approval mode, waiting for creator approval
   kicked,
   roomFull,
@@ -62,6 +63,11 @@ final messagesProvider = StateNotifierProvider<MessagesNotifier, List<ChatMessag
 /// Room notifications provider
 final notificationsProvider = StateNotifierProvider<NotificationsNotifier, List<RoomNotification>>((ref) {
   return NotificationsNotifier();
+});
+
+/// Disconnected sessions provider - tracks sessions that can be reclaimed
+final disconnectedSessionsProvider = StateNotifierProvider<DisconnectedSessionsNotifier, List<DisconnectedSession>>((ref) {
+  return DisconnectedSessionsNotifier();
 });
 
 /// Whether current user is the room creator
@@ -137,6 +143,14 @@ class RoomNotifier extends StateNotifier<Room?> {
     required String roomCode,
     required String roomName,
   }) {
+    // First, check if there's a valid disconnected session for this room code
+    final disconnectedSession = _ref.read(disconnectedSessionsProvider.notifier).findValidSession(roomCode);
+
+    if (disconnectedSession != null && disconnectedSession.isWithinGracePeriod) {
+      // Restore the previous session
+      return _reconnectWithSession(disconnectedSession, roomName);
+    }
+
     final peerId = _ref.read(currentPeerIdProvider);
     final displayName = _ref.read(currentDisplayNameProvider);
 
@@ -211,6 +225,69 @@ class RoomNotifier extends StateNotifier<Room?> {
     return JoinResult.success;
   }
 
+  /// Reconnect using a saved disconnected session
+  JoinResult _reconnectWithSession(DisconnectedSession session, String roomName) {
+    // Restore the previous peer ID and display name
+    _ref.read(currentPeerIdProvider.notifier).state = session.peerId;
+    _ref.read(currentDisplayNameProvider.notifier).state = session.displayName;
+
+    // Check if user was kicked from this room (double check with restored peerId)
+    if (state != null && state!.isKicked(session.peerId)) {
+      // Remove the session since they're kicked
+      _ref.read(disconnectedSessionsProvider.notifier).removeSession(session.peerId);
+      return JoinResult.kicked;
+    }
+
+    // Check if room is full
+    if (state != null && state!.isFull) {
+      return JoinResult.roomFull;
+    }
+
+    final participant = Participant(
+      peerId: session.peerId,
+      displayName: session.displayName,
+      joinedAt: DateTime.now(),
+      lastSeen: DateTime.now(),
+      isCreator: session.wasCreator,
+      isOnline: true,
+    );
+
+    if (state == null) {
+      // Create room state for reconnection (in real P2P, this would sync from network)
+      state = Room(
+        swarmId: _uuid.v4(),
+        roomName: roomName,
+        roomCode: session.roomCode,
+        approvalMode: false,
+        creatorPeerId: session.wasCreator ? session.peerId : '',
+        participants: [participant],
+        kickedPeerIds: [],
+        createdAt: DateTime.now(),
+      );
+    } else {
+      // Restore creatorPeerId if reconnecting as creator
+      final updatedCreatorPeerId = session.wasCreator ? session.peerId : state!.creatorPeerId;
+
+      // Add participant to existing room
+      state = state!.copyWith(
+        participants: [...state!.participants, participant],
+        creatorPeerId: updatedCreatorPeerId,
+      );
+    }
+
+    // Remove the session from disconnected list
+    _ref.read(disconnectedSessionsProvider.notifier).removeSession(session.peerId);
+
+    // Add reconnection notification
+    _ref.read(notificationsProvider.notifier).addNotification(
+      type: RoomNotificationType.participantJoined,
+      message: '${session.displayName} reconnected',
+      peerId: session.peerId,
+    );
+
+    return JoinResult.reconnected;
+  }
+
   /// Add a simulated participant (for testing)
   /// Returns false if room is full
   bool addSimulatedParticipant(String displayName) {
@@ -283,11 +360,24 @@ class RoomNotifier extends StateNotifier<Room?> {
   }
 
   /// Leave the room
-  void leaveRoom() {
+  /// Set saveSession to true to allow reconnection within grace period
+  void leaveRoom({bool saveSession = true}) {
     if (state == null) return;
 
     final currentPeerId = _ref.read(currentPeerIdProvider);
     final displayName = _ref.read(currentDisplayNameProvider);
+    final wasCreator = state!.creatorPeerId == currentPeerId;
+    final roomCode = state!.roomCode;
+
+    // Save session for potential reconnection (if not kicked)
+    if (saveSession && !state!.isKicked(currentPeerId)) {
+      _ref.read(disconnectedSessionsProvider.notifier).addSession(
+        peerId: currentPeerId,
+        displayName: displayName,
+        roomCode: roomCode,
+        wasCreator: wasCreator,
+      );
+    }
 
     // Mark messages as removed
     _ref.read(messagesProvider.notifier).markMessagesAsRemoved(currentPeerId);
@@ -589,6 +679,62 @@ class NotificationsNotifier extends StateNotifier<List<RoomNotification>> {
 
   /// Clear notifications
   void clearNotifications() {
+    state = [];
+  }
+}
+
+/// Disconnected sessions notifier - manages sessions in the reconnection grace period
+class DisconnectedSessionsNotifier extends StateNotifier<List<DisconnectedSession>> {
+  DisconnectedSessionsNotifier() : super([]);
+
+  /// Add a disconnected session
+  void addSession({
+    required String peerId,
+    required String displayName,
+    required String roomCode,
+    bool wasCreator = false,
+  }) {
+    // Remove any existing session for this peer
+    state = state.where((s) => s.peerId != peerId).toList();
+
+    final session = DisconnectedSession(
+      peerId: peerId,
+      displayName: displayName,
+      roomCode: roomCode,
+      disconnectedAt: DateTime.now(),
+      wasCreator: wasCreator,
+    );
+
+    state = [...state, session];
+  }
+
+  /// Find a valid session for the given room code
+  /// Returns null if no valid session exists or grace period has expired
+  DisconnectedSession? findValidSession(String roomCode) {
+    // Clean up expired sessions first
+    _cleanupExpiredSessions();
+
+    try {
+      return state.firstWhere(
+        (s) => s.roomCode == roomCode && s.isWithinGracePeriod,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Remove a session after successful reconnection
+  void removeSession(String peerId) {
+    state = state.where((s) => s.peerId != peerId).toList();
+  }
+
+  /// Clean up expired sessions
+  void _cleanupExpiredSessions() {
+    state = state.where((s) => s.isWithinGracePeriod).toList();
+  }
+
+  /// Clear all sessions
+  void clearSessions() {
     state = [];
   }
 }
