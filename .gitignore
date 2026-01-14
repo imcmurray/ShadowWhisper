@@ -1,0 +1,54 @@
+# Flutter/Dart
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub/
+*.iml
+*.ipr
+*.iws
+.idea/
+pubspec.lock
+
+# Web
+web/.dart_tool/
+
+# IDE
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+
+# Generated files
+*.g.dart
+*.freezed.dart
+lib/generated_plugin_registrant.dart
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Debug
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test output
+test-results/
+
+# Features database (managed by MCP server)
+features.db
+
+# LLM working files
+.llm/
+claude-progress.txt

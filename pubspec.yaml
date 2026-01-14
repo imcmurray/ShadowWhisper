@@ -1,0 +1,42 @@
+name: shadow_whisper
+description: A zero-trust, anonymous P2P ephemeral group chat application built on the ShadowSwarm Protocol. No servers, no persistent data—just resilient, ephemeral swarms that self-heal and self-police.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.3 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+  # Cryptography
+  cryptography: ^2.7.2
+
+  # Utilities
+  uuid: ^4.3.3
+
+  # UI Components
+  cupertino_icons: ^1.0.8
+  emoji_picker_flutter: ^2.1.1
+
+  # Note: P2P and Tor integration packages
+  # These may need custom implementations or web-compatible alternatives:
+  # - dart_libp2p: P2P mesh networking via libp2p
+  # - tor_hidden_service: Onion routing integration
+  # - circom_witnesscalc_flutter: ZK-SNARK proof generation
+  # - flutter_webrtc: WebRTC/WebTransport fallback
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  build_runner: ^2.4.9
+  riverpod_generator: ^2.4.3
+
+flutter:
+  uses-material-design: true

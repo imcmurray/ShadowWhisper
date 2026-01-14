@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    ShadowWhisper - Zero-Trust Anonymous P2P Ephemeral Chat
+    A privacy-first, serverless chat application using ZK proofs and Tor.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="Zero-trust anonymous ephemeral group chat. No servers, no logs, no traces.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ShadowWhisper">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <!-- Title -->
+  <title>ShadowWhisper</title>
+
+  <!-- Manifest -->
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Theme color -->
+  <meta name="theme-color" content="#0F0F0F">
+
+  <!-- Viewport -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <style>
+    /* Loading indicator styles */
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      background-color: #0F0F0F;
+      overflow: hidden;
+    }
+
+    #loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: #0F0F0F;
+    }
+
+    #loading .logo {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: rgba(16, 185, 129, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+
+    #loading .logo svg {
+      width: 48px;
+      height: 48px;
+      fill: #10B981;
+    }
+
+    #loading h1 {
+      color: #FFFFFF;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 24px;
+      font-weight: 600;
+      margin: 0 0 8px 0;
+    }
+
+    #loading p {
+      color: #9CA3AF;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      margin: 0;
+    }
+
+    #loading .spinner {
+      margin-top: 32px;
+      width: 32px;
+      height: 32px;
+      border: 3px solid #1E1E1E;
+      border-top-color: #10B981;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading indicator shown while Flutter initializes -->
+  <div id="loading">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 6c1.4 0 2.8 1.1 2.8 2.5V11c.6.3 1 .8 1 1.5v3c0 .8-.7 1.5-1.5 1.5h-4.6c-.8 0-1.5-.7-1.5-1.5v-3c0-.7.4-1.2 1-1.5V9.5C9.2 8.1 10.6 7 12 7zm0 1.2c-.8 0-1.5.7-1.5 1.3V11h3V9.5c0-.6-.7-1.3-1.5-1.3z"/>
+      </svg>
+    </div>
+    <h1>ShadowWhisper</h1>
+    <p>Loading secure environment...</p>
+    <div class="spinner"></div>
+  </div>
+
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
