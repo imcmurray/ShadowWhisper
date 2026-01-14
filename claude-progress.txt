@@ -1570,4 +1570,36 @@ Fixed core messaging functionality and verified 15 additional features by levera
 
 ---
 
-*Session 17 Complete - 26/90 features verified (28.9%)*
+*Session 17 Complete - 37/90 features verified (41.1%)*
+
+## Additional Features Verified (continued from above)
+
+### H. URL & Direct Access
+- Feature #35: Direct URL to non-existent room shows error ✓
+- Feature #36: Landing page accessible directly ✓
+
+### I. Double-Action & Idempotency
+- Feature #37: Double-click send doesn't duplicate message ✓
+- Feature #38: Double-click kick doesn't cause errors ✓
+
+### J. Data Cleanup & Cascade
+- Feature #39: Messages disappear when sender leaves ✓
+- Feature #41: Kicked user removed from participant list ✓
+
+### K. Default & Reset
+- Feature #42: Random anonymous name assigned on join ✓
+- Feature #43: Approval mode defaults correctly ✓
+
+### L. Search & Filter Edge Cases
+- Feature #44: Message with special characters renders correctly ✓
+
+### G. State & Persistence
+- Feature #32: Late joiners see only new messages ✓
+- Feature #33: Room ends when all participants leave ✓
+
+## Features Requiring Implementation (skipped)
+- Feature #21: Approval mode workflow
+- Feature #27: Disconnection shows reconnection countdown
+- Feature #31: Display name change syncs to all
+- Feature #34: Reconnection within 30s preserves session
+- Feature #40: Multiple consecutive '...' collapse to single line
