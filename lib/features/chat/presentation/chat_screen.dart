@@ -4,10 +4,12 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../room/providers/room_provider.dart';
 import '../../room/domain/room_notification.dart';
+import '../providers/security_provider.dart';
 import 'widgets/chat_input.dart';
 import 'widgets/message_list.dart';
 import 'widgets/participant_drawer.dart';
 import 'widgets/blur_overlay.dart';
+import 'widgets/shadow_mode_indicator.dart';
 
 /// Main chat screen for the room.
 ///
@@ -184,9 +186,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  roomName,
-                  style: Theme.of(context).textTheme.titleMedium,
+                Row(
+                  children: [
+                    Text(
+                      roomName,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(width: 8),
+                    const ShadowModeIndicator(),
+                  ],
                 ),
                 Text(
                   '$participantCount participant${participantCount == 1 ? '' : 's'}',
@@ -200,6 +208,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
         ],
       ),
       actions: [
+        // Shadow mode toggle (for testing)
+        const ShadowModeToggle(),
         // Participants button
         IconButton(
           icon: const Icon(Icons.people_outline),
