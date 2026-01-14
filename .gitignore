@@ -30,7 +30,6 @@ coverage/
 # Generated files
 *.g.dart
 *.freezed.dart
-lib/generated_plugin_registrant.dart
 
 # Environment
 .env

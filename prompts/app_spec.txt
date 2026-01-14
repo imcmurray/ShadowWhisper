@@ -1,0 +1,453 @@
+<project_specification>
+  <project_name>ShadowWhisper</project_name>
+
+  <overview>
+    A zero-trust, anonymous P2P ephemeral group chat application revolutionizing secure browser communication. Built on the custom ShadowSwarm Protocol, it combines libp2p's modular P2P stack with Tor onion routing for full anonymity and zero-knowledge proofs (ZK) for secure, reveal-nothing authentication and consensus. No servers, no persistent data—just resilient, ephemeral swarms that self-heal and self-police, making surveillance futile.
+  </overview>
+
+  <technology_stack>
+    <frontend>
+      <framework>Flutter Web (>=3.16.5)</framework>
+      <styling>Material Design with custom dark theme</styling>
+      <state_management>Riverpod (^2.5.1)</state_management>
+      <rendering>Canvas Kit for anti-snoop rendering</rendering>
+    </frontend>
+    <backend>
+      <runtime>Dart (>=3.2.3)</runtime>
+      <database>None - fully in-memory ephemeral storage</database>
+      <p2p_stack>dart_libp2p (modular P2P mesh, Gossipsub, DHT)</p2p_stack>
+      <anonymity>tor_hidden_service (^0.1.2) for onion routing</anonymity>
+      <zk_proofs>circom_witnesscalc_flutter (^1.0.0) for ZK authentication</zk_proofs>
+      <encryption>cryptography (^2.7.2) - Kyber post-quantum + ed25519</encryption>
+    </backend>
+    <communication>
+      <api>P2P Gossipsub protocol over Tor-hidden libp2p mesh</api>
+      <signaling>DHT-based peer discovery via Tor hidden services</signaling>
+      <fallback>flutter_webrtc (^0.10.5) for WebTransport interop</fallback>
+    </communication>
+  </technology_stack>
+
+  <prerequisites>
+    <environment_setup>
+      - Flutter SDK >=3.16.5
+      - Dart SDK >=3.2.3
+      - Web browser with WebRTC/WebTransport support
+      - Development: Tor emulation for testing
+    </environment_setup>
+  </prerequisites>
+
+  <feature_count>90</feature_count>
+
+  <security_and_access_control>
+    <user_roles>
+      <role name="room_creator">
+        <permissions>
+          - Can create rooms with custom name
+          - Can choose approval mode (open vs approval required)
+          - Can approve/reject join requests (in approval mode)
+          - Can kick any participant
+          - Can expire/end the room at any time
+          - Can view participant list
+          - Can send messages and react to messages
+        </permissions>
+      </role>
+      <role name="participant">
+        <permissions>
+          - Can join rooms with valid code
+          - Can view participant list
+          - Can send messages (up to 500 chars)
+          - Can react to messages with emojis
+          - Can change their display name
+          - Can leave room (with 30s reconnection window)
+          - Cannot kick other participants
+          - Cannot approve join requests
+        </permissions>
+      </role>
+    </user_roles>
+    <authentication>
+      <method>Zero-knowledge proof of room code knowledge (ZK-SNARKs)</method>
+      <session_timeout>30 seconds after disconnect</session_timeout>
+      <room_code>Argon2-hashed to derive swarm ID</room_code>
+    </authentication>
+    <sensitive_operations>
+      - Leaving room requires confirmation (warns about 30s lockout)
+      - Kicking a user is permanent (cannot rejoin same room)
+      - Room expiry by creator is immediate and irreversible
+    </sensitive_operations>
+    <anonymity_protections>
+      - All traffic routed via Tor onion layers (3-5 hops)
+      - ZK proofs ensure no identity revelation during auth
+      - No IP addresses ever exposed between peers
+      - Shadow relays for first-joiner anonymity
+      - Post-quantum encryption (Kyber) for future-proofing
+      - Perfect forward secrecy via Diffie-Hellman
+    </anonymity_protections>
+    <anti_surveillance>
+      - Screen blur when browser window loses focus
+      - Shadow mode (extra onion hops) on anomaly detection
+      - Canvas-based rendering for anti-screenshot protection
+      - RDP/remote session detection triggers enhanced protection
+      - In-memory only - zero persistent storage
+    </anti_surveillance>
+    <dos_protection>
+      - Light proof-of-work (5s compute) required for room joins
+      - libp2p peer scoring for reputation management
+      - Bad actors automatically pruned from mesh
+      - Room size capped at 20 participants for web performance
+    </dos_protection>
+  </security_and_access_control>
+
+  <core_features>
+    <landing_page>
+      - Informative landing page explaining ShadowWhisper's security features
+      - Clear call-to-action: Create Room or Join Room
+      - Dark theme with green "secure" accent color
+      - Brief explanation of zero-trust, ephemeral nature
+    </landing_page>
+
+    <room_creation>
+      - Room name input field
+      - Approval mode toggle: Open Room vs Approval Required
+      - Auto-generated random room code (e.g., "shadow-7x9k2m")
+      - Copy room code to clipboard button
+      - Creator automatically joins their room
+      - Creator assigned random anonymous name
+    </room_creation>
+
+    <room_joining>
+      - Enter room code screen
+      - ZK proof generation (proving code knowledge without revealing it)
+      - Waiting room UI while pending creator approval (if approval mode)
+      - Instant join for open rooms after ZK verification
+      - "Room not found" generic error for invalid/expired codes
+      - Late joiners see only messages from time of joining
+    </room_joining>
+
+    <chat_interface>
+      - Real-time message display
+      - Message input with 500 character limit
+      - Standard emoji picker in input
+      - Big emoji display when message is emoji-only
+      - Emoji reactions on messages
+      - "X is typing..." indicator
+      - Message seen/delivered status indicators
+      - Messages disappear when sender leaves (replaced with "...")
+      - Multiple consecutive "..." lines collapse to single line
+      - Participant list visible to all users
+      - Creator-only kick button on participants
+      - "X was removed" notification when someone is kicked
+    </chat_interface>
+
+    <user_identity>
+      - Random anonymous name auto-assigned on join
+      - Ability to change display name at any time
+      - No persistent identity across rooms
+      - Names visible in participant list and on messages
+    </user_identity>
+
+    <presence_and_connection>
+      - Online/present indicators for participants
+      - "X is typing..." real-time indicator
+      - Connection status monitoring
+      - 30-second countdown timer on disconnect
+      - Auto-removal after 30s disconnect timeout
+      - Kicked users permanently banned from room
+    </presence_and_connection>
+
+    <room_lifecycle>
+      - Room exists only while at least one participant connected
+      - Room ends immediately when all participants leave
+      - Creator can manually expire/end room
+      - No persistence - room gone forever when ended
+      - 30-second grace period for reconnection on disconnect
+    </room_lifecycle>
+
+    <leaving_room>
+      - Leave button accessible in UI
+      - Confirmation dialog warning about 30s lockout
+      - User's messages disappear from all other participants' views
+      - "..." placeholder left where messages were
+    </leaving_room>
+
+    <settings>
+      - Settings page accessible from main UI
+      - Security features explanation section
+      - Display name change option
+    </settings>
+
+    <anti_surveillance_ui>
+      - Screen blur overlay when window loses focus
+      - Blur removes when window regains focus
+      - Visual indicator when shadow mode (enhanced protection) is active
+    </anti_surveillance_ui>
+  </core_features>
+
+  <database_schema>
+    <note>No persistent database - all data is in-memory only</note>
+    <in_memory_structures>
+      <room>
+        - swarmId (derived from Argon2 hash of room code)
+        - roomName (string)
+        - roomCode (string, auto-generated)
+        - approvalMode (boolean)
+        - creatorPeerId (string)
+        - participants (list of Participant)
+        - pendingJoins (list of PendingJoin, if approval mode)
+        - createdAt (timestamp)
+      </room>
+      <participant>
+        - peerId (string, ephemeral)
+        - displayName (string, randomly generated, changeable)
+        - joinedAt (timestamp)
+        - lastSeen (timestamp)
+        - isTyping (boolean)
+        - isCreator (boolean)
+      </participant>
+      <message>
+        - messageId (UUID)
+        - senderPeerId (string)
+        - senderDisplayName (string)
+        - content (string, max 500 chars)
+        - timestamp (datetime)
+        - reactions (map of emoji to list of peerId)
+        - seenBy (list of peerId)
+        - deliveredTo (list of peerId)
+      </message>
+      <pending_join>
+        - peerId (string)
+        - displayName (string)
+        - requestedAt (timestamp)
+        - zkProofValid (boolean)
+      </pending_join>
+    </in_memory_structures>
+  </database_schema>
+
+  <api_endpoints_summary>
+    <note>No REST API - all communication via P2P Gossipsub protocol</note>
+    <gossipsub_topics>
+      <room_management>
+        - /room/join-request (broadcast join request with ZK proof)
+        - /room/join-approved (creator approves join)
+        - /room/join-rejected (creator rejects join)
+        - /room/participant-joined (announce new participant)
+        - /room/participant-left (announce departure)
+        - /room/participant-kicked (announce kick)
+        - /room/expired (creator ends room)
+      </room_management>
+      <messaging>
+        - /messages/new (broadcast new message)
+        - /messages/reaction (add emoji reaction)
+        - /messages/typing (typing indicator)
+        - /messages/seen (mark message as seen)
+        - /messages/delivered (delivery confirmation)
+        - /messages/remove (remove user's messages on leave)
+      </messaging>
+      <presence>
+        - /presence/heartbeat (connection keepalive)
+        - /presence/status (online status updates)
+        - /presence/name-change (display name update)
+      </presence>
+      <consensus>
+        - /zk/ack-commitment (ZK acknowledgment for quorum)
+        - /zk/quorum-reached (trigger synchronized actions)
+      </consensus>
+    </gossipsub_topics>
+  </api_endpoints_summary>
+
+  <ui_layout>
+    <main_structure>
+      Single-page application with screen-based navigation:
+      - Landing Page (default)
+      - Create Room Screen
+      - Join Room Screen
+      - Waiting Room Screen (approval mode)
+      - Chat Screen (main experience)
+      - Settings Screen (overlay/modal)
+    </main_structure>
+    <landing_page_layout>
+      - Hero section with ShadowWhisper branding
+      - Brief security features explanation
+      - Two prominent buttons: Create Room / Join Room
+      - Footer with minimal info
+    </landing_page_layout>
+    <chat_screen_layout>
+      - Header: Room name, participant count, settings gear, leave button
+      - Participant list: Collapsible sidebar or drawer
+      - Message area: Scrollable, newest at bottom
+      - Input area: Text field, emoji picker, send button
+      - Typing indicator: Above input area
+      - Blur overlay: Covers entire screen when window unfocused
+    </chat_screen_layout>
+  </ui_layout>
+
+  <design_system>
+    <color_palette>
+      <primary>Green (#10B981 - secure/trust indicator)</primary>
+      <background>Dark (#0F0F0F or #121212)</background>
+      <surface>Dark gray (#1E1E1E)</surface>
+      <text_primary>White (#FFFFFF)</text_primary>
+      <text_secondary>Gray (#9CA3AF)</text_secondary>
+      <error>Red (#EF4444)</error>
+      <warning>Amber (#F59E0B)</warning>
+      <success>Green (#10B981)</success>
+    </color_palette>
+    <typography>
+      <font_family>System default sans-serif (for performance)</font_family>
+      <headings>Bold, larger sizes</headings>
+      <body>Regular weight, readable size</body>
+      <messages>Slightly smaller, optimized for chat</messages>
+    </typography>
+    <visual_style>
+      - Minimal, clean interface
+      - Subtle shadows and depth
+      - Smooth transitions and animations
+      - Green accents for security-related elements
+      - Mysterious/secure aesthetic without being intimidating
+    </visual_style>
+  </design_system>
+
+  <implementation_steps>
+    <step number="1">
+      <title>Project Setup & Core Infrastructure</title>
+      <tasks>
+        - Initialize Flutter Web project with pubspec.yaml dependencies
+        - Set up Riverpod state management structure
+        - Configure dark theme with green accent
+        - Create basic navigation/routing structure
+        - Set up development environment with Tor emulation
+      </tasks>
+    </step>
+    <step number="2">
+      <title>Landing Page & Basic Screens</title>
+      <tasks>
+        - Build informative landing page with branding
+        - Create Room creation screen with name input and approval toggle
+        - Create Join Room screen with code input
+        - Implement room code generation and clipboard copy
+        - Style all screens with dark theme
+      </tasks>
+    </step>
+    <step number="3">
+      <title>P2P Infrastructure (ShadowSwarm Protocol)</title>
+      <tasks>
+        - Integrate dart_libp2p for mesh networking
+        - Implement Tor hidden service routing
+        - Set up Gossipsub topic structure
+        - Implement peer discovery via DHT
+        - Add proof-of-work for join anti-spam
+      </tasks>
+    </step>
+    <step number="4">
+      <title>ZK Authentication System</title>
+      <tasks>
+        - Integrate circom_witnesscalc_flutter
+        - Implement ZK proof generation for room code knowledge
+        - Implement ZK proof verification
+        - Build waiting room UI for approval mode
+        - Handle join approval/rejection flow
+      </tasks>
+    </step>
+    <step number="5">
+      <title>Encryption & Security Layer</title>
+      <tasks>
+        - Implement Kyber post-quantum key exchange
+        - Add Diffie-Hellman for perfect forward secrecy
+        - Set up end-to-end encryption for all messages
+        - Implement onion routing (3-5 hops)
+        - Add peer scoring for DoS resistance
+      </tasks>
+    </step>
+    <step number="6">
+      <title>Chat Interface & Messaging</title>
+      <tasks>
+        - Build chat screen layout
+        - Implement message sending/receiving
+        - Add 500 character limit
+        - Integrate emoji picker
+        - Implement big emoji display for emoji-only messages
+        - Add emoji reactions on messages
+      </tasks>
+    </step>
+    <step number="7">
+      <title>Real-time Features</title>
+      <tasks>
+        - Implement typing indicators
+        - Add message seen/delivered status
+        - Build participant list with online status
+        - Implement kick functionality for creators
+        - Add join/leave/kick notifications
+      </tasks>
+    </step>
+    <step number="8">
+      <title>Room Lifecycle & Ephemeral Behavior</title>
+      <tasks>
+        - Implement message disappearance when user leaves
+        - Add "..." placeholder for removed messages
+        - Handle room end when all leave
+        - Implement creator room expiry
+        - Add 30-second reconnection window
+        - Block kicked users from rejoining
+      </tasks>
+    </step>
+    <step number="9">
+      <title>Anti-Surveillance Features</title>
+      <tasks>
+        - Implement screen blur on window focus loss
+        - Add shadow mode (extra hops) on anomaly detection
+        - Integrate canvas-based anti-screenshot rendering
+        - Add RDP/remote session detection
+        - Build security info section in settings
+      </tasks>
+    </step>
+    <step number="10">
+      <title>Polish & Testing</title>
+      <tasks>
+        - Add loading states and transitions
+        - Implement error handling and messages
+        - Test multi-peer scenarios
+        - Performance optimization for web
+        - Cross-browser testing
+        - Security audit and penetration testing
+      </tasks>
+    </step>
+  </implementation_steps>
+
+  <success_criteria>
+    <functionality>
+      - Users can create and join ephemeral chat rooms
+      - Messages are truly ephemeral (in-memory only)
+      - Room creators can approve joins and kick participants
+      - All 90 features work as specified
+      - P2P mesh functions without central server
+    </functionality>
+    <user_experience>
+      - Intuitive flow from landing to chatting
+      - Real-time messaging feels instant
+      - Clear feedback for all actions
+      - Smooth animations and transitions
+      - Works well on desktop browsers
+    </user_experience>
+    <technical_quality>
+      - Zero IP leakage - all traffic via Tor
+      - ZK proofs validate correctly
+      - Post-quantum encryption implemented
+      - Handles up to 20 concurrent participants
+      - Graceful handling of disconnections
+      - No console errors or memory leaks
+    </technical_quality>
+    <design_polish>
+      - Consistent dark theme throughout
+      - Green accent used appropriately
+      - Professional, trustworthy aesthetic
+      - Accessible text contrast
+      - Responsive within desktop viewport
+    </design_polish>
+    <security>
+      - No data persists after room ends
+      - Kicked users cannot rejoin
+      - Messages disappear when sender leaves
+      - Screen blur activates on focus loss
+      - ZK auth reveals nothing about room code
+    </security>
+  </success_criteria>
+</project_specification>
