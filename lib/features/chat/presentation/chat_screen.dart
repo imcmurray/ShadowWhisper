@@ -40,6 +40,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   bool _isBlurred = false;
   int? _lastNotificationCount;
   Timer? _timeoutCheckTimer;
+  bool _mounted = true;
 
   @override
   void initState() {
@@ -58,10 +59,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   }
 
   void _checkTimedOutParticipants() {
-    // Check and remove timed out participants
+    if (!_mounted) return;
+
     final removedPeerIds = ref.read(roomProvider.notifier).checkAndRemoveTimedOutParticipants();
-    if (removedPeerIds.isNotEmpty) {
-      // Force UI rebuild to update participant list and countdown timers
+    if (removedPeerIds.isNotEmpty && _mounted) {
       setState(() {});
     }
   }
@@ -88,6 +89,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
 
   @override
   void dispose() {
+    _mounted = false;
     _timeoutCheckTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
