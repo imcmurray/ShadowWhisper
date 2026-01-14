@@ -1,27 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../room/providers/room_provider.dart';
 
 /// Settings screen overlay/modal.
 ///
 /// Features:
 /// - Display name change
 /// - Security features explanation
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _displayNameController = TextEditingController();
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    // TODO: Load current display name from state
-    _displayNameController.text = 'Anonymous Fox';
+    // Load current display name from state
+    _displayNameController.text = ref.read(currentDisplayNameProvider);
   }
 
   @override
@@ -34,12 +36,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final newName = _displayNameController.text.trim();
     if (newName.isEmpty) return;
 
+    // Check if name is different from current
+    final currentName = ref.read(currentDisplayNameProvider);
+    if (newName == currentName) return;
+
     setState(() {
       _isSaving = true;
     });
 
-    // TODO: Update display name via P2P network
+    // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 300));
+
+    // Update display name via room provider
+    final currentPeerId = ref.read(currentPeerIdProvider);
+    final room = ref.read(roomProvider);
+
+    if (room != null) {
+      // Update in room state (will also update currentDisplayNameProvider)
+      ref.read(roomProvider.notifier).updateDisplayName(currentPeerId, newName);
+    } else {
+      // Not in a room, just update the provider directly
+      ref.read(currentDisplayNameProvider.notifier).state = newName;
+    }
 
     setState(() {
       _isSaving = false;
