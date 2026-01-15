@@ -84,7 +84,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     }
 
     // Connect to P2P network
-    ref.read(p2pProvider.notifier).connect(roomCode: roomCode);
+    ref.read(p2pProvider.notifier).connect(
+      roomCode: roomCode,
+      roomName: widget.args.roomName,
+      isCreator: widget.args.isCreator,
+    );
   }
 
   @override

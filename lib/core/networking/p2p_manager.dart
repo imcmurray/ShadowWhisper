@@ -16,6 +16,8 @@ class P2PManager {
   final Map<String, PeerConnection> _peers = {};
   String? _localPeerId;
   String? _localDisplayName;
+  String? _localRoomName;
+  bool _isCreator = false;
   Map<String, dynamic>? _iceServersConfig;
 
   final _messageController = StreamController<P2PMessage>.broadcast();
@@ -95,9 +97,13 @@ class P2PManager {
     required String roomCode,
     required String peerId,
     required String displayName,
+    String? roomName,
+    bool isCreator = false,
   }) async {
     _localPeerId = peerId;
     _localDisplayName = displayName;
+    _localRoomName = roomName;
+    _isCreator = isCreator;
 
     // Fetch TURN credentials before connecting
     _iceServersConfig = await _fetchTurnCredentials();
@@ -220,7 +226,8 @@ class P2PManager {
   }
 
   Future<void> _initiateConnection(String peerId) async {
-    if (_peers.containsKey(peerId) || _localPeerId == null) return;
+    // Don't connect to self or existing peers
+    if (peerId == _localPeerId || _peers.containsKey(peerId) || _localPeerId == null) return;
 
     final peerConnection = PeerConnection(
       peerId: peerId,
@@ -252,7 +259,21 @@ class P2PManager {
   }
 
   Future<void> _handleOffer(String peerId, Map<String, dynamic> payload) async {
-    if (_localPeerId == null) return;
+    // Don't handle offers from self
+    if (_localPeerId == null || peerId == _localPeerId) return;
+
+    // Glare resolution: if we already have a connection to this peer, use tie-breaker
+    // The peer with the lexicographically lower ID becomes the initiator
+    if (_peers.containsKey(peerId)) {
+      if (_localPeerId!.compareTo(peerId) < 0) {
+        // We have lower ID, we should be initiator - ignore their offer
+        return;
+      } else {
+        // They have lower ID, they should be initiator - abandon our connection
+        await _peers[peerId]?.close();
+        _peers.remove(peerId);
+      }
+    }
 
     // Create peer connection if it doesn't exist
     if (!_peers.containsKey(peerId)) {
@@ -347,6 +368,8 @@ class P2PManager {
     final hello = P2PMessage.hello(
       senderId: _localPeerId!,
       displayName: _localDisplayName!,
+      roomName: _localRoomName,
+      isCreator: _isCreator,
     );
     _peers[peerId]?.sendMessage(hello);
   }

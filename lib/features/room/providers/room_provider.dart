@@ -215,10 +215,12 @@ class RoomNotifier extends StateNotifier<Room?> {
         createdAt: DateTime.now(),
       );
     } else {
-      // Add participant to existing room
-      state = state!.copyWith(
-        participants: [...state!.participants, participant],
-      );
+      // Add participant to existing room only if not already present
+      if (!state!.participants.any((p) => p.peerId == peerId)) {
+        state = state!.copyWith(
+          participants: [...state!.participants, participant],
+        );
+      }
     }
 
     // Add join notification
@@ -584,6 +586,10 @@ class RoomNotifier extends StateNotifier<Room?> {
   }) {
     if (state == null) return;
 
+    // Don't add self as a remote participant
+    final localPeerId = _ref.read(currentPeerIdProvider);
+    if (peerId == localPeerId) return;
+
     // Check if participant already exists
     if (state!.participants.any((p) => p.peerId == peerId)) {
       // Update existing participant to online
@@ -609,6 +615,14 @@ class RoomNotifier extends StateNotifier<Room?> {
       message: '$displayName joined the room',
       peerId: peerId,
     );
+  }
+
+  /// Update the room name (synced from creator via P2P)
+  void updateRoomName(String roomName) {
+    if (state == null) return;
+    if (state!.roomName == roomName) return;
+
+    state = state!.copyWith(roomName: roomName);
   }
 
   /// Remove a remote participant (received via P2P)

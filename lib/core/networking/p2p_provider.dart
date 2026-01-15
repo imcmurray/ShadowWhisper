@@ -60,6 +60,8 @@ class P2PNotifier extends StateNotifier<P2PProviderState> {
   /// Connect to a room via P2P
   Future<void> connect({
     required String roomCode,
+    String? roomName,
+    bool isCreator = false,
   }) async {
     if (_manager != null) {
       await disconnect();
@@ -83,6 +85,8 @@ class P2PNotifier extends StateNotifier<P2PProviderState> {
         roomCode: roomCode,
         peerId: peerId,
         displayName: displayName,
+        roomName: roomName,
+        isCreator: isCreator,
       );
 
       state = state.copyWith(state: P2PState.connected);
@@ -130,12 +134,18 @@ class P2PNotifier extends StateNotifier<P2PProviderState> {
         case P2PMessageType.hello:
           // A peer said hello - they're connected
           final displayName = message.payload['displayName'] as String?;
+          final roomName = message.payload['roomName'] as String?;
+          final isCreator = message.payload['isCreator'] as bool? ?? false;
           if (displayName != null) {
             // Add them as a participant if not already present
             _ref.read(roomProvider.notifier).addRemoteParticipant(
               peerId: message.senderId,
               displayName: displayName,
             );
+            // If the sender is the room creator, sync the room name
+            if (isCreator && roomName != null) {
+              _ref.read(roomProvider.notifier).updateRoomName(roomName);
+            }
           }
           break;
 

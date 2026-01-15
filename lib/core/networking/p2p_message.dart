@@ -66,11 +66,17 @@ class P2PMessage {
   factory P2PMessage.hello({
     required String senderId,
     required String displayName,
+    String? roomName,
+    bool isCreator = false,
   }) {
     return P2PMessage(
       type: P2PMessageType.hello,
       senderId: senderId,
-      payload: {'displayName': displayName},
+      payload: {
+        'displayName': displayName,
+        if (roomName != null) 'roomName': roomName,
+        'isCreator': isCreator,
+      },
     );
   }
 
