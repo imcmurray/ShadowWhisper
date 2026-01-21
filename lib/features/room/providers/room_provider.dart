@@ -107,6 +107,48 @@ final disconnectedParticipantsProvider = Provider<List<Participant>>((ref) {
   return participants.where((p) => p.isDisconnected).toList();
 });
 
+/// Typing participants provider - only includes participants who are currently typing
+/// Excludes the current user to prevent self-display - PERF FIX 1.2
+final typingParticipantsProvider = Provider<List<Participant>>((ref) {
+  final participants = ref.watch(participantsProvider);
+  final currentPeerId = ref.watch(currentPeerIdProvider);
+  return participants
+      .where((p) => p.isTyping && p.peerId != currentPeerId)
+      .toList();
+});
+
+/// Map of participants by peerId for O(1) lookups - PERF FIX 2.1
+final participantByIdProvider = Provider<Map<String, Participant>>((ref) {
+  final participants = ref.watch(participantsProvider);
+  return {for (final p in participants) p.peerId: p};
+});
+
+/// Filtered messages provider - collapses consecutive removed messages - PERF FIX 1.3
+/// This prevents the filtering logic from running on every widget build
+final filteredMessagesProvider = Provider<List<ChatMessage>>((ref) {
+  final messages = ref.watch(messagesProvider);
+  if (messages.isEmpty) return messages;
+
+  final result = <ChatMessage>[];
+  bool lastWasRemoved = false;
+
+  for (final message in messages) {
+    if (message.isRemoved) {
+      // Only add the first removed message in a consecutive series
+      if (!lastWasRemoved) {
+        result.add(message);
+        lastWasRemoved = true;
+      }
+      // Skip consecutive removed messages
+    } else {
+      result.add(message);
+      lastWasRemoved = false;
+    }
+  }
+
+  return result;
+});
+
 /// Room state notifier
 class RoomNotifier extends StateNotifier<Room?> {
   final Ref _ref;
@@ -410,87 +452,75 @@ class RoomNotifier extends StateNotifier<Room?> {
     }
   }
 
-  /// Update participant typing status
+  /// Update participant typing status - uses index-based update - PERF FIX 4.2
   void setTyping(String peerId, bool isTyping) {
     if (state == null) return;
 
-    final updatedParticipants = state!.participants.map((p) {
-      if (p.peerId == peerId) {
-        return p.copyWith(isTyping: isTyping);
-      }
-      return p;
-    }).toList();
+    final index = state!.participants.indexWhere((p) => p.peerId == peerId);
+    if (index == -1) return;
+
+    // Skip update if typing status hasn't changed
+    if (state!.participants[index].isTyping == isTyping) return;
+
+    final updatedParticipants = List<Participant>.from(state!.participants);
+    updatedParticipants[index] = updatedParticipants[index].copyWith(isTyping: isTyping);
 
     state = state!.copyWith(participants: updatedParticipants);
   }
 
-  /// Mark a participant as disconnected (starts 30s countdown)
+  /// Mark a participant as disconnected (starts 30s countdown) - uses index-based update - PERF FIX 4.2
   void markParticipantDisconnected(String peerId) {
     if (state == null) return;
 
-    // Find the participant first to get display name
-    final participantIndex = state!.participants.indexWhere((p) => p.peerId == peerId);
-    if (participantIndex == -1) {
-      // Participant not found - might have already been removed
-      return;
-    }
+    final index = state!.participants.indexWhere((p) => p.peerId == peerId);
+    if (index == -1) return;
 
-    final participant = state!.participants[participantIndex];
+    final participant = state!.participants[index];
+    final displayName = participant.displayName;
 
-    final updatedParticipants = state!.participants.map((p) {
-      if (p.peerId == peerId) {
-        return p.copyWith(
-          isOnline: false,
-          disconnectedAt: DateTime.now(),
-        );
-      }
-      return p;
-    }).toList();
+    final updatedParticipants = List<Participant>.from(state!.participants);
+    updatedParticipants[index] = participant.copyWith(
+      isOnline: false,
+      disconnectedAt: DateTime.now(),
+    );
 
     state = state!.copyWith(participants: updatedParticipants);
 
     _ref.read(notificationsProvider.notifier).addNotification(
       type: RoomNotificationType.participantLeft,
-      message: '${participant.displayName} disconnected (30s to reconnect)',
+      message: '$displayName disconnected (30s to reconnect)',
       peerId: peerId,
     );
   }
 
-  /// Mark a participant as reconnected (clears disconnect state)
+  /// Mark a participant as reconnected (clears disconnect state) - uses index-based update - PERF FIX 4.2
   void markParticipantReconnected(String peerId) {
     if (state == null) return;
 
-    // Find the participant first
-    final participantIndex = state!.participants.indexWhere((p) => p.peerId == peerId);
-    if (participantIndex == -1) {
-      // Participant not found - might have already been removed
-      return;
-    }
+    final index = state!.participants.indexWhere((p) => p.peerId == peerId);
+    if (index == -1) return;
 
-    final participant = state!.participants[participantIndex];
+    final participant = state!.participants[index];
+    final displayName = participant.displayName;
 
-    final updatedParticipants = state!.participants.map((p) {
-      if (p.peerId == peerId) {
-        return p.copyWith(
-          isOnline: true,
-          clearDisconnectedAt: true,
-          lastSeen: DateTime.now(),
-        );
-      }
-      return p;
-    }).toList();
+    final updatedParticipants = List<Participant>.from(state!.participants);
+    updatedParticipants[index] = participant.copyWith(
+      isOnline: true,
+      clearDisconnectedAt: true,
+      lastSeen: DateTime.now(),
+    );
 
     state = state!.copyWith(participants: updatedParticipants);
 
     _ref.read(notificationsProvider.notifier).addNotification(
       type: RoomNotificationType.participantJoined,
-      message: '${participant.displayName} reconnected',
+      message: '$displayName reconnected',
       peerId: peerId,
     );
   }
 
   /// Check for timed out participants and remove them
-  /// Returns list of removed peer IDs
+  /// Returns list of removed peer IDs - uses batch operation - PERF FIX 4.1
   List<String> checkAndRemoveTimedOutParticipants() {
     if (state == null) return [];
 
@@ -514,9 +544,11 @@ class RoomNotifier extends StateNotifier<Room?> {
 
     state = state!.copyWith(participants: updatedParticipants);
 
-    // Mark messages from timed out users as removed and add notifications
+    // Batch mark messages as removed (single state update) - PERF FIX 4.1
+    _ref.read(messagesProvider.notifier).markMessagesAsRemovedBatch(timedOutPeerIds);
+
+    // Add notifications for each timed out participant
     for (int i = 0; i < timedOutPeerIds.length; i++) {
-      _ref.read(messagesProvider.notifier).markMessagesAsRemoved(timedOutPeerIds[i]);
       _ref.read(notificationsProvider.notifier).addNotification(
         type: RoomNotificationType.participantLeft,
         message: '${timedOutNames[i]} timed out',
@@ -541,23 +573,21 @@ class RoomNotifier extends StateNotifier<Room?> {
         .toList();
   }
 
-  /// Update display name
+  /// Update display name - uses index-based update - PERF FIX 4.2
   void updateDisplayName(String peerId, String newName) {
     if (state == null) return;
 
-    final participant = state!.participants.firstWhere(
-      (p) => p.peerId == peerId,
-      orElse: () => throw Exception('Participant not found'),
-    );
+    final index = state!.participants.indexWhere((p) => p.peerId == peerId);
+    if (index == -1) return;
 
+    final participant = state!.participants[index];
     final oldName = participant.displayName;
 
-    final updatedParticipants = state!.participants.map((p) {
-      if (p.peerId == peerId) {
-        return p.copyWith(displayName: newName);
-      }
-      return p;
-    }).toList();
+    // Skip if name hasn't changed
+    if (oldName == newName) return;
+
+    final updatedParticipants = List<Participant>.from(state!.participants);
+    updatedParticipants[index] = participant.copyWith(displayName: newName);
 
     state = state!.copyWith(participants: updatedParticipants);
 
@@ -791,9 +821,26 @@ class RoomNotifier extends StateNotifier<Room?> {
   }
 }
 
-/// Messages notifier
+/// Messages notifier with indexed lookups for O(1) operations - PERF FIX 2.2
 class MessagesNotifier extends StateNotifier<List<ChatMessage>> {
+  // Indices for O(1) lookups
+  final Map<String, int> _messageIndexById = {};
+  final Map<String, Set<String>> _messageIdsBySender = {};
+
   MessagesNotifier() : super([]);
+
+  /// Rebuild indices from current state (called after bulk operations)
+  void _rebuildIndices() {
+    _messageIndexById.clear();
+    _messageIdsBySender.clear();
+    for (int i = 0; i < state.length; i++) {
+      final msg = state[i];
+      _messageIndexById[msg.messageId] = i;
+      _messageIdsBySender
+          .putIfAbsent(msg.senderPeerId, () => {})
+          .add(msg.messageId);
+    }
+  }
 
   /// Add a new message
   void addMessage({
@@ -809,49 +856,106 @@ class MessagesNotifier extends StateNotifier<List<ChatMessage>> {
       timestamp: DateTime.now(),
     );
 
+    // Update indices
+    _messageIndexById[message.messageId] = state.length;
+    _messageIdsBySender
+        .putIfAbsent(senderPeerId, () => {})
+        .add(message.messageId);
+
     state = [...state, message];
   }
 
   /// Mark messages from a peer as removed (when they leave or get kicked)
+  /// Uses sender index for O(1) lookup of message IDs
   void markMessagesAsRemoved(String peerId) {
-    state = state.map((m) {
-      if (m.senderPeerId == peerId) {
-        return m.copyWith(isRemoved: true);
+    final messageIds = _messageIdsBySender[peerId];
+    if (messageIds == null || messageIds.isEmpty) return;
+
+    final newState = List<ChatMessage>.from(state);
+    bool hasChanges = false;
+
+    for (final messageId in messageIds) {
+      final index = _messageIndexById[messageId];
+      if (index != null && !newState[index].isRemoved) {
+        newState[index] = newState[index].copyWith(isRemoved: true);
+        hasChanges = true;
       }
-      return m;
-    }).toList();
+    }
+
+    if (hasChanges) {
+      state = newState;
+    }
   }
 
-  /// Add a reaction to a message
+  /// Batch mark messages as removed for multiple peers - PERF FIX 4.1
+  void markMessagesAsRemovedBatch(List<String> peerIds) {
+    if (peerIds.isEmpty) return;
+
+    // Collect all message IDs that need updating
+    final messageIdsToUpdate = <String>{};
+    for (final peerId in peerIds) {
+      final ids = _messageIdsBySender[peerId];
+      if (ids != null) {
+        messageIdsToUpdate.addAll(ids);
+      }
+    }
+
+    if (messageIdsToUpdate.isEmpty) return;
+
+    // Single state update for all messages
+    final newState = List<ChatMessage>.from(state);
+    bool hasChanges = false;
+
+    for (final messageId in messageIdsToUpdate) {
+      final index = _messageIndexById[messageId];
+      if (index != null && !newState[index].isRemoved) {
+        newState[index] = newState[index].copyWith(isRemoved: true);
+        hasChanges = true;
+      }
+    }
+
+    if (hasChanges) {
+      state = newState;
+    }
+  }
+
+  /// Add a reaction to a message - uses index for O(1) lookup
   void addReaction(String messageId, String emoji, String peerId) {
-    state = state.map((m) {
-      if (m.messageId == messageId) {
-        final updatedReactions = Map<String, List<String>>.from(m.reactions);
-        if (updatedReactions.containsKey(emoji)) {
-          if (!updatedReactions[emoji]!.contains(peerId)) {
-            updatedReactions[emoji] = [...updatedReactions[emoji]!, peerId];
-          }
-        } else {
-          updatedReactions[emoji] = [peerId];
-        }
-        return m.copyWith(reactions: updatedReactions);
-      }
-      return m;
-    }).toList();
+    final index = _messageIndexById[messageId];
+    if (index == null) return;
+
+    final message = state[index];
+    final updatedReactions = Map<String, List<String>>.from(message.reactions);
+
+    if (updatedReactions.containsKey(emoji)) {
+      if (updatedReactions[emoji]!.contains(peerId)) return; // Already reacted
+      updatedReactions[emoji] = [...updatedReactions[emoji]!, peerId];
+    } else {
+      updatedReactions[emoji] = [peerId];
+    }
+
+    final newState = List<ChatMessage>.from(state);
+    newState[index] = message.copyWith(reactions: updatedReactions);
+    state = newState;
   }
 
-  /// Mark message as seen
+  /// Mark message as seen - uses index for O(1) lookup
   void markAsSeen(String messageId, String peerId) {
-    state = state.map((m) {
-      if (m.messageId == messageId && !m.seenBy.contains(peerId)) {
-        return m.copyWith(seenBy: [...m.seenBy, peerId]);
-      }
-      return m;
-    }).toList();
+    final index = _messageIndexById[messageId];
+    if (index == null) return;
+
+    final message = state[index];
+    if (message.seenBy.contains(peerId)) return; // Already seen
+
+    final newState = List<ChatMessage>.from(state);
+    newState[index] = message.copyWith(seenBy: [...message.seenBy, peerId]);
+    state = newState;
   }
 
   /// Clear all messages
   void clearMessages() {
+    _messageIndexById.clear();
+    _messageIdsBySender.clear();
     state = [];
   }
 }

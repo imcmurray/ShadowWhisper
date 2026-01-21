@@ -42,23 +42,21 @@ class _MessageListState extends ConsumerState<MessageList> {
 
   @override
   Widget build(BuildContext context) {
-    final messages = ref.watch(messagesProvider);
+    // Use filteredMessagesProvider to avoid filtering on every build - PERF FIX 1.3
+    final filteredMessages = ref.watch(filteredMessagesProvider);
     final currentPeerId = ref.watch(currentPeerIdProvider);
 
     // Auto-scroll to bottom when new messages arrive
-    if (messages.length > _previousMessageCount) {
+    if (filteredMessages.length > _previousMessageCount) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _scrollToBottom();
       });
     }
-    _previousMessageCount = messages.length;
+    _previousMessageCount = filteredMessages.length;
 
-    if (messages.isEmpty) {
+    if (filteredMessages.isEmpty) {
       return _buildEmptyState();
     }
-
-    // Filter messages to collapse consecutive removed messages
-    final filteredMessages = _collapseConsecutiveRemovedMessages(messages);
 
     return ListView.builder(
       controller: _scrollController,
@@ -87,31 +85,6 @@ class _MessageListState extends ConsumerState<MessageList> {
         );
       },
     );
-  }
-
-  /// Collapse consecutive removed messages into a single placeholder.
-  /// This prevents cluttering the UI with multiple '...' entries.
-  List<ChatMessage> _collapseConsecutiveRemovedMessages(List<ChatMessage> messages) {
-    if (messages.isEmpty) return messages;
-
-    final result = <ChatMessage>[];
-    bool lastWasRemoved = false;
-
-    for (final message in messages) {
-      if (message.isRemoved) {
-        // Only add the first removed message in a consecutive series
-        if (!lastWasRemoved) {
-          result.add(message);
-          lastWasRemoved = true;
-        }
-        // Skip consecutive removed messages
-      } else {
-        result.add(message);
-        lastWasRemoved = false;
-      }
-    }
-
-    return result;
   }
 
   Widget _buildEmptyState() {
@@ -156,14 +129,13 @@ class _MessageBubble extends ConsumerWidget {
     required this.showSenderInfo,
   });
 
-  bool get _isEmojiOnly {
-    // Check if message contains only emoji characters
-    final emojiRegex = RegExp(
-      r'^[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\s]+$',
-      unicode: true,
-    );
-    return emojiRegex.hasMatch(message.content);
-  }
+  // Static regex to avoid recompilation on every build - PERF FIX 1.1
+  static final RegExp _emojiRegex = RegExp(
+    r'^[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\s]+$',
+    unicode: true,
+  );
+
+  bool get _isEmojiOnly => _emojiRegex.hasMatch(message.content);
 
   bool get _isOwnMessage => message.senderPeerId == currentPeerId;
   bool get _isSeen => message.seenBy.isNotEmpty;

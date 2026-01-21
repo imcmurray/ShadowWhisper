@@ -20,6 +20,11 @@ class P2PManager {
   bool _isCreator = false;
   Map<String, dynamic>? _iceServersConfig;
 
+  // Typing indicator debounce - PERF FIX 2.3
+  Timer? _typingDebounceTimer;
+  bool _lastTypingState = false;
+  static const int _typingDebounceMs = 300;
+
   final _messageController = StreamController<P2PMessage>.broadcast();
   final _connectionStateController = StreamController<P2PConnectionEvent>.broadcast();
   StreamSubscription<SignalingMessage>? _signalingSubscription;
@@ -138,19 +143,48 @@ class P2PManager {
   }
 
   /// Send a typing indicator to all connected peers.
+  /// Uses debouncing to reduce network traffic - PERF FIX 2.3
   void sendTypingIndicator(bool isTyping) {
     if (_localPeerId == null) return;
 
-    final message = P2PMessage.typing(
-      senderId: _localPeerId!,
-      isTyping: isTyping,
-    );
+    // Cancel any pending debounce timer
+    _typingDebounceTimer?.cancel();
 
-    _broadcast(message);
+    // If stopping typing, send immediately (no delay for responsiveness)
+    if (!isTyping && _lastTypingState) {
+      _lastTypingState = false;
+      final message = P2PMessage.typing(
+        senderId: _localPeerId!,
+        isTyping: false,
+      );
+      _broadcast(message);
+      return;
+    }
+
+    // If starting typing, debounce to avoid spam from rapid keystrokes
+    if (isTyping && !_lastTypingState) {
+      _typingDebounceTimer = Timer(
+        Duration(milliseconds: _typingDebounceMs),
+        () {
+          if (_localPeerId == null) return;
+          _lastTypingState = true;
+          final message = P2PMessage.typing(
+            senderId: _localPeerId!,
+            isTyping: true,
+          );
+          _broadcast(message);
+        },
+      );
+    }
   }
 
   /// Leave the room and disconnect from all peers.
   Future<void> leaveRoom() async {
+    // Clean up typing debounce timer - PERF FIX 2.3
+    _typingDebounceTimer?.cancel();
+    _typingDebounceTimer = null;
+    _lastTypingState = false;
+
     if (_localPeerId != null) {
       final goodbye = P2PMessage.goodbye(senderId: _localPeerId!);
       _broadcast(goodbye);
