@@ -20,6 +20,11 @@ class P2PManager {
   bool _isCreator = false;
   Map<String, dynamic>? _iceServersConfig;
 
+  // Typing indicator debounce - PERF FIX 2.3
+  Timer? _typingDebounceTimer;
+  bool _lastTypingState = false;
+  static const int _typingDebounceMs = 300;
+
   final _messageController = StreamController<P2PMessage>.broadcast();
   final _connectionStateController = StreamController<P2PConnectionEvent>.broadcast();
   StreamSubscription<SignalingMessage>? _signalingSubscription;
@@ -41,11 +46,11 @@ class P2PManager {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         return _buildIceServersConfig(data);
       } else {
-        print('Failed to fetch TURN credentials: ${response.statusCode}');
+        // TURN credentials unavailable - will fallback to STUN
         return null;
       }
-    } catch (error) {
-      print('Error fetching TURN credentials: $error');
+    } catch (_) {
+      // Network error fetching TURN credentials - will fallback to STUN
       return null;
     }
   }
@@ -105,13 +110,8 @@ class P2PManager {
     _localRoomName = roomName;
     _isCreator = isCreator;
 
-    // Fetch TURN credentials before connecting
+    // Fetch TURN credentials before connecting (fallback to STUN if unavailable)
     _iceServersConfig = await _fetchTurnCredentials();
-    if (_iceServersConfig != null) {
-      print('TURN credentials fetched successfully');
-    } else {
-      print('Using STUN-only configuration (TURN unavailable)');
-    }
 
     _signalingClient = SignalingClient(serverUrl: signalingServerUrl);
 
@@ -138,19 +138,48 @@ class P2PManager {
   }
 
   /// Send a typing indicator to all connected peers.
+  /// Uses debouncing to reduce network traffic - PERF FIX 2.3
   void sendTypingIndicator(bool isTyping) {
     if (_localPeerId == null) return;
 
-    final message = P2PMessage.typing(
-      senderId: _localPeerId!,
-      isTyping: isTyping,
-    );
+    // Cancel any pending debounce timer
+    _typingDebounceTimer?.cancel();
 
-    _broadcast(message);
+    // If stopping typing, send immediately (no delay for responsiveness)
+    if (!isTyping && _lastTypingState) {
+      _lastTypingState = false;
+      final message = P2PMessage.typing(
+        senderId: _localPeerId!,
+        isTyping: false,
+      );
+      _broadcast(message);
+      return;
+    }
+
+    // If starting typing, debounce to avoid spam from rapid keystrokes
+    if (isTyping && !_lastTypingState) {
+      _typingDebounceTimer = Timer(
+        Duration(milliseconds: _typingDebounceMs),
+        () {
+          if (_localPeerId == null) return;
+          _lastTypingState = true;
+          final message = P2PMessage.typing(
+            senderId: _localPeerId!,
+            isTyping: true,
+          );
+          _broadcast(message);
+        },
+      );
+    }
   }
 
   /// Leave the room and disconnect from all peers.
   Future<void> leaveRoom() async {
+    // Clean up typing debounce timer - PERF FIX 2.3
+    _typingDebounceTimer?.cancel();
+    _typingDebounceTimer = null;
+    _lastTypingState = false;
+
     if (_localPeerId != null) {
       final goodbye = P2PMessage.goodbye(senderId: _localPeerId!);
       _broadcast(goodbye);
@@ -220,7 +249,7 @@ class P2PManager {
         break;
 
       case SignalingMessageType.error:
-        print('Signaling error: ${message.error}');
+        // Signaling error - connection may fail but no logging in production
         break;
     }
   }

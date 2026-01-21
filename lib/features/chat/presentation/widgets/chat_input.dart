@@ -27,6 +27,7 @@ class _ChatInputState extends ConsumerState<ChatInput> {
   bool _isSending = false;
   bool _wasTyping = false;
   static const int _maxLength = 500;
+  int _lastCharCount = 0; // Track char count for optimized setState - PERF FIX 3.2
 
   @override
   void initState() {
@@ -45,10 +46,32 @@ class _ChatInputState extends ConsumerState<ChatInput> {
   }
 
   void _onTextChanged() {
-    setState(() {});
+    // Only call setState when UI actually needs updating - PERF FIX 3.2
+    final currentLength = _controller.text.length;
+    final isEmpty = currentLength == 0;
+    final wasEmpty = _lastCharCount == 0;
+
+    // Check if character counter color would change (thresholds: 50, 0)
+    final needsCounterUpdate =
+        (_lastCharCount >= 50 && currentLength < 50) ||
+        (_lastCharCount < 50 && currentLength >= 50) ||
+        (_lastCharCount > 0 && currentLength <= 0) ||
+        (_lastCharCount <= 0 && currentLength > 0) ||
+        (_lastCharCount <= _maxLength && currentLength > _maxLength) ||
+        (_lastCharCount > _maxLength && currentLength <= _maxLength);
+
+    // Check if send button state would change (empty <-> non-empty)
+    final needsButtonUpdate = isEmpty != wasEmpty;
+
+    _lastCharCount = currentLength;
+
+    // Only setState when UI elements need updating
+    if (needsCounterUpdate || needsButtonUpdate) {
+      setState(() {});
+    }
 
     // Update typing status
-    final isTyping = _controller.text.isNotEmpty;
+    final isTyping = !isEmpty;
     if (isTyping != _wasTyping) {
       _wasTyping = isTyping;
       _setTypingStatus(isTyping);
@@ -160,21 +183,27 @@ class _ChatInputState extends ConsumerState<ChatInput> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            // Character counter
-            if (_controller.text.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4, right: 4),
-                child: Text(
-                  '$_remainingChars',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: _remainingChars < 50
-                            ? (_remainingChars < 0
-                                ? AppColors.error
-                                : AppColors.warning)
-                            : AppColors.textSecondary,
-                      ),
-                ),
-              ),
+            // Character counter using ValueListenableBuilder for efficient updates - PERF FIX 3.2
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _controller,
+              builder: (context, value, child) {
+                if (value.text.isEmpty) return const SizedBox.shrink();
+                final remaining = _maxLength - value.text.length;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 4, right: 4),
+                  child: Text(
+                    '$remaining',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: remaining < 50
+                              ? (remaining < 0
+                                  ? AppColors.error
+                                  : AppColors.warning)
+                              : AppColors.textSecondary,
+                        ),
+                  ),
+                );
+              },
+            ),
 
             // Input row
             Row(
@@ -346,6 +375,11 @@ class _EmojiPickerSheetState extends State<_EmojiPickerSheet> {
     'Nature': Icons.nature,
     'Symbols': Icons.tag,
   };
+
+  // Cached set of all emojis for search - avoids iterating all categories on every build - PERF FIX 1.4
+  static final Set<String> _allEmojisCache = _emojiCategories.values
+      .expand((emojis) => emojis)
+      .toSet();
 
   @override
   void dispose() {
@@ -529,21 +563,16 @@ class _EmojiPickerSheetState extends State<_EmojiPickerSheet> {
   }
 
   Widget _buildSearchResults() {
-    // Get all emojis from all categories (deduplicated)
-    final allEmojis = <String>{};
-    for (final category in _emojiCategories.values) {
-      allEmojis.addAll(category);
-    }
-
+    // Use cached set instead of creating new one on every build - PERF FIX 1.4
     return GridView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 8,
         childAspectRatio: 1,
       ),
-      itemCount: allEmojis.length,
+      itemCount: _allEmojisCache.length,
       itemBuilder: (context, index) {
-        return _buildEmojiButton(allEmojis.elementAt(index));
+        return _buildEmojiButton(_allEmojisCache.elementAt(index));
       },
     );
   }

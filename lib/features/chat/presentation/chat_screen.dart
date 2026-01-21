@@ -41,6 +41,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   int? _lastNotificationCount;
   Timer? _timeoutCheckTimer;
   bool _mounted = true;
+  bool _hasDisconnectedParticipants = false; // Track disconnected state - PERF FIX 3.1
 
   @override
   void initState() {
@@ -52,16 +53,37 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
       _initializeRoom();
     });
 
-    // Start periodic timer to check for timed out participants
+    // Timer is now started conditionally - PERF FIX 3.1
+    // It will be started when disconnected participants are detected
+  }
+
+  /// Start the timeout check timer if not already running - PERF FIX 3.1
+  void _startTimeoutTimerIfNeeded() {
+    if (_timeoutCheckTimer != null) return; // Already running
+
     _timeoutCheckTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       _checkTimedOutParticipants();
     });
+  }
+
+  /// Stop the timeout check timer - PERF FIX 3.1
+  void _stopTimeoutTimer() {
+    _timeoutCheckTimer?.cancel();
+    _timeoutCheckTimer = null;
   }
 
   void _checkTimedOutParticipants() {
     if (!_mounted) return;
 
     final removedPeerIds = ref.read(roomProvider.notifier).checkAndRemoveTimedOutParticipants();
+
+    // Check if there are still disconnected participants
+    final disconnected = ref.read(disconnectedParticipantsProvider);
+    if (disconnected.isEmpty) {
+      _stopTimeoutTimer();
+      _hasDisconnectedParticipants = false;
+    }
+
     if (removedPeerIds.isNotEmpty && _mounted) {
       setState(() {});
     }
@@ -183,6 +205,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     final participantCount = ref.watch(participantCountProvider);
     final notifications = ref.watch(notificationsProvider);
     final room = ref.watch(roomProvider);
+
+    // Watch disconnected participants to conditionally start/stop timer - PERF FIX 3.1
+    final disconnectedParticipants = ref.watch(disconnectedParticipantsProvider);
+    if (disconnectedParticipants.isNotEmpty && !_hasDisconnectedParticipants) {
+      _hasDisconnectedParticipants = true;
+      _startTimeoutTimerIfNeeded();
+    } else if (disconnectedParticipants.isEmpty && _hasDisconnectedParticipants) {
+      _hasDisconnectedParticipants = false;
+      _stopTimeoutTimer();
+    }
 
     // Show notification snackbars for new notifications
     if (_lastNotificationCount != null && notifications.length > _lastNotificationCount!) {
