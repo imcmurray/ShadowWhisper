@@ -46,11 +46,11 @@ class P2PManager {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         return _buildIceServersConfig(data);
       } else {
-        print('Failed to fetch TURN credentials: ${response.statusCode}');
+        // TURN credentials unavailable - will fallback to STUN
         return null;
       }
-    } catch (error) {
-      print('Error fetching TURN credentials: $error');
+    } catch (_) {
+      // Network error fetching TURN credentials - will fallback to STUN
       return null;
     }
   }
@@ -110,13 +110,8 @@ class P2PManager {
     _localRoomName = roomName;
     _isCreator = isCreator;
 
-    // Fetch TURN credentials before connecting
+    // Fetch TURN credentials before connecting (fallback to STUN if unavailable)
     _iceServersConfig = await _fetchTurnCredentials();
-    if (_iceServersConfig != null) {
-      print('TURN credentials fetched successfully');
-    } else {
-      print('Using STUN-only configuration (TURN unavailable)');
-    }
 
     _signalingClient = SignalingClient(serverUrl: signalingServerUrl);
 
@@ -254,7 +249,7 @@ class P2PManager {
         break;
 
       case SignalingMessageType.error:
-        print('Signaling error: ${message.error}');
+        // Signaling error - connection may fail but no logging in production
         break;
     }
   }

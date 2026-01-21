@@ -827,27 +827,52 @@ class MessagesNotifier extends StateNotifier<List<ChatMessage>> {
   final Map<String, int> _messageIndexById = {};
   final Map<String, Set<String>> _messageIdsBySender = {};
 
+  // Rate limiting - track messages per sender
+  final Map<String, List<DateTime>> _recentMessagesBySender = {};
+  static const int _maxMessagesPerSecond = 5;
+  static const int _maxMessageLength = 500;
+
   MessagesNotifier() : super([]);
 
-  /// Rebuild indices from current state (called after bulk operations)
-  void _rebuildIndices() {
-    _messageIndexById.clear();
-    _messageIdsBySender.clear();
-    for (int i = 0; i < state.length; i++) {
-      final msg = state[i];
-      _messageIndexById[msg.messageId] = i;
-      _messageIdsBySender
-          .putIfAbsent(msg.senderPeerId, () => {})
-          .add(msg.messageId);
-    }
+  /// Check if a sender is rate limited
+  bool _isRateLimited(String senderId) {
+    final now = DateTime.now();
+    final recentMessages = _recentMessagesBySender[senderId] ?? [];
+
+    // Remove messages older than 1 second
+    final cutoff = now.subtract(const Duration(seconds: 1));
+    final validMessages = recentMessages.where((t) => t.isAfter(cutoff)).toList();
+    _recentMessagesBySender[senderId] = validMessages;
+
+    return validMessages.length >= _maxMessagesPerSecond;
   }
 
-  /// Add a new message
-  void addMessage({
+  /// Record a message for rate limiting
+  void _recordMessage(String senderId) {
+    final messages = _recentMessagesBySender[senderId] ?? [];
+    messages.add(DateTime.now());
+    _recentMessagesBySender[senderId] = messages;
+  }
+
+  /// Add a new message with validation and rate limiting
+  /// Returns true if the message was added, false if rejected
+  bool addMessage({
     required String senderPeerId,
     required String senderDisplayName,
     required String content,
   }) {
+    // Validate message content length (security)
+    if (content.isEmpty || content.length > _maxMessageLength) {
+      return false; // Reject invalid messages
+    }
+
+    // Check rate limiting (security)
+    if (_isRateLimited(senderPeerId)) {
+      return false; // Rate limited - reject message
+    }
+
+    _recordMessage(senderPeerId);
+
     final message = ChatMessage(
       messageId: _uuid.v4(),
       senderPeerId: senderPeerId,
@@ -863,6 +888,7 @@ class MessagesNotifier extends StateNotifier<List<ChatMessage>> {
         .add(message.messageId);
 
     state = [...state, message];
+    return true;
   }
 
   /// Mark messages from a peer as removed (when they leave or get kicked)
@@ -960,11 +986,13 @@ class MessagesNotifier extends StateNotifier<List<ChatMessage>> {
   }
 }
 
-/// Notifications notifier
+/// Notifications notifier with memory limit
 class NotificationsNotifier extends StateNotifier<List<RoomNotification>> {
+  static const int _maxNotifications = 100;
+
   NotificationsNotifier() : super([]);
 
-  /// Add a notification
+  /// Add a notification with automatic cleanup of old notifications
   void addNotification({
     required RoomNotificationType type,
     required String message,
@@ -978,7 +1006,13 @@ class NotificationsNotifier extends StateNotifier<List<RoomNotification>> {
       peerId: peerId,
     );
 
-    state = [...state, notification];
+    // Add new notification and trim if exceeds max
+    final newState = [...state, notification];
+    if (newState.length > _maxNotifications) {
+      state = newState.sublist(newState.length - _maxNotifications);
+    } else {
+      state = newState;
+    }
   }
 
   /// Clear notifications
@@ -1016,7 +1050,7 @@ class DisconnectedSessionsNotifier extends StateNotifier<List<DisconnectedSessio
   /// Returns null if no valid session exists or grace period has expired
   DisconnectedSession? findValidSession(String roomCode) {
     // Clean up expired sessions first
-    _cleanupExpiredSessions();
+    cleanupExpiredSessions();
 
     try {
       return state.firstWhere(
@@ -1032,9 +1066,12 @@ class DisconnectedSessionsNotifier extends StateNotifier<List<DisconnectedSessio
     state = state.where((s) => s.peerId != peerId).toList();
   }
 
-  /// Clean up expired sessions
-  void _cleanupExpiredSessions() {
+  /// Clean up expired sessions (public for periodic cleanup)
+  void cleanupExpiredSessions() {
+    final before = state.length;
     state = state.where((s) => s.isWithinGracePeriod).toList();
+    // Only update state if something was removed
+    if (state.length == before) return;
   }
 
   /// Clear all sessions
