@@ -125,6 +125,14 @@ class P2PNotifier extends StateNotifier<P2PProviderState> {
     _manager?.sendTypingIndicator(isTyping);
   }
 
+  /// Send a reaction to a message via P2P
+  void sendReaction({
+    required String messageId,
+    required String emoji,
+  }) {
+    _manager?.sendReaction(messageId: messageId, emoji: emoji);
+  }
+
   void _handleMessage(P2PMessage message) {
     // Guard against callbacks after disposal
     if (_isDisposed) return;
@@ -173,6 +181,18 @@ class P2PNotifier extends StateNotifier<P2PProviderState> {
 
         case P2PMessageType.typingStop:
           _ref.read(roomProvider.notifier).setTyping(message.senderId, false);
+          break;
+
+        case P2PMessageType.messageReaction:
+          final messageId = message.payload['messageId'] as String?;
+          final emoji = message.payload['emoji'] as String?;
+          if (messageId != null && emoji != null) {
+            _ref.read(messagesProvider.notifier).addReaction(
+              messageId,
+              emoji,
+              message.senderId,
+            );
+          }
           break;
 
         default:

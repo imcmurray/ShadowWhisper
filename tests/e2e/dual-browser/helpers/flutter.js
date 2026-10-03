@@ -25,6 +25,17 @@ async function clickAt(page, coordinates, description = '') {
   await page.waitForTimeout(config.TIMEOUTS.shortWait);
 }
 
+async function longPressAt(page, coordinates, description = '', duration = 800) {
+  if (description) {
+    console.log(`  Long-pressing: ${description}`);
+  }
+  await page.mouse.move(coordinates.x, coordinates.y);
+  await page.mouse.down();
+  await page.waitForTimeout(duration);
+  await page.mouse.up();
+  await page.waitForTimeout(config.TIMEOUTS.shortWait);
+}
+
 async function typeText(page, text, delay = 50) {
   await page.keyboard.type(text, { delay });
   await page.waitForTimeout(config.TIMEOUTS.shortWait);
@@ -41,6 +52,7 @@ async function takeScreenshot(page, name, prefix = '') {
 module.exports = {
   waitForFlutterLoad,
   clickAt,
+  longPressAt,
   typeText,
   takeScreenshot,
 };

@@ -124,4 +124,20 @@ class P2PMessage {
       senderId: senderId,
     );
   }
+
+  /// Create a message reaction.
+  factory P2PMessage.reaction({
+    required String senderId,
+    required String messageId,
+    required String emoji,
+  }) {
+    return P2PMessage(
+      type: P2PMessageType.messageReaction,
+      senderId: senderId,
+      payload: {
+        'messageId': messageId,
+        'emoji': emoji,
+      },
+    );
+  }
 }

@@ -149,6 +149,22 @@ class P2PManager {
     _broadcast(message);
   }
 
+  /// Send a reaction to a message to all connected peers.
+  void sendReaction({
+    required String messageId,
+    required String emoji,
+  }) {
+    if (_localPeerId == null) return;
+
+    final message = P2PMessage.reaction(
+      senderId: _localPeerId!,
+      messageId: messageId,
+      emoji: emoji,
+    );
+
+    _broadcast(message);
+  }
+
   /// Leave the room and disconnect from all peers.
   Future<void> leaveRoom() async {
     if (_localPeerId != null) {

@@ -35,16 +35,28 @@ if [[ "$1" == "--help" || "$1" == "-h" ]]; then
     echo "  ./run-dual-tests.sh <pattern>          Run tests matching pattern"
     echo "  ./run-dual-tests.sh --dir <dir>        Run tests in directory"
     echo "  ./run-dual-tests.sh --list             List all available tests"
+    echo "  ./run-dual-tests.sh --auto-fix         Auto-fix failing tests"
     echo ""
     echo "Examples:"
     echo "  ./run-dual-tests.sh                    # Run full regression"
     echo "  ./run-dual-tests.sh room-join          # Run room-join tests"
     echo "  ./run-dual-tests.sh messaging          # Run messaging tests"
     echo "  ./run-dual-tests.sh --dir room         # Run all room/ tests"
+    echo "  ./run-dual-tests.sh --auto-fix         # Run and auto-fix failures"
+    echo ""
+    echo "Auto-Fix Mode:"
+    echo "  When --auto-fix is enabled:"
+    echo "  1. Run all tests normally"
+    echo "  2. For failing tests, generate bug reports"
+    echo "  3. Invoke Claude Code CLI to analyze and fix"
+    echo "  4. Restart Flutter app"
+    echo "  5. Re-run test to verify fix"
+    echo "  6. Retry up to 2 times per failing test"
     echo ""
     echo "Prerequisites:"
     echo "  Flutter app must be running:"
     echo "    flutter run -d chrome --web-port=8080"
+    echo "  For auto-fix: Claude Code CLI must be installed"
     echo ""
     exit 0
 fi
@@ -72,6 +84,17 @@ fi
 mkdir -p "$TEST_DIR/output/screenshots"
 mkdir -p "$TEST_DIR/output/logs"
 mkdir -p "$TEST_DIR/output/reports"
+mkdir -p "$TEST_DIR/output/bug-reports"
+
+# Show auto-fix warning if enabled
+if [[ "$*" == *"--auto-fix"* ]]; then
+    echo -e "${YELLOW}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${YELLOW}║  ⚠️  AUTO-FIX MODE ENABLED                                  ║${NC}"
+    echo -e "${YELLOW}║  Claude Code will attempt to fix any failing tests.        ║${NC}"
+    echo -e "${YELLOW}║  The Flutter app will be restarted after each fix.         ║${NC}"
+    echo -e "${YELLOW}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+fi
 
 # Run the test runner with all arguments passed through
 echo -e "${YELLOW}Starting test runner...${NC}"
@@ -94,9 +117,10 @@ fi
 
 echo ""
 echo -e "${CYAN}Output directories:${NC}"
-echo "  Screenshots: $TEST_DIR/output/screenshots/"
-echo "  Logs:        $TEST_DIR/output/logs/"
-echo "  Reports:     $TEST_DIR/output/reports/"
+echo "  Screenshots:  $TEST_DIR/output/screenshots/"
+echo "  Logs:         $TEST_DIR/output/logs/"
+echo "  Reports:      $TEST_DIR/output/reports/"
+echo "  Bug Reports:  $TEST_DIR/output/bug-reports/"
 echo ""
 
 exit $EXIT_CODE

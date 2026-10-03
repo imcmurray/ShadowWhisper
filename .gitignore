@@ -55,3 +55,10 @@ assistant.db
 .llm/
 claude-progress.txt
 node_modules/
+
+# SQLite write-ahead sidecars (transient)
+*.db-shm
+*.db-wal
+
+# Local agent settings
+.claude/settings.local.json

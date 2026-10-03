@@ -26,6 +26,22 @@ module.exports = {
     participantsButton: { x: 1178, y: 28 },
     settingsButton: { x: 1218, y: 28 },
     leaveButton: { x: 1258, y: 28 },
+    endRoomButton: { x: 1138, y: 28 },
+    // First message bubble (received, left-aligned) - approximate center
+    firstMessageBubble: { x: 200, y: 150 },
+    // Own message bubble (sent, right-aligned) - approximate center
+    ownMessageBubble: { x: 1000, y: 150 },
+  },
+
+  // Reaction picker modal (bottom sheet)
+  reactionPicker: {
+    // Emoji positions in the picker (evenly spaced)
+    thumbsUp: { x: 320, y: 620 },
+    heart: { x: 440, y: 620 },
+    laughing: { x: 560, y: 620 },
+    surprised: { x: 680, y: 620 },
+    crying: { x: 800, y: 620 },
+    thumbsDown: { x: 920, y: 620 },
   },
 
   participantDrawer: {
@@ -38,4 +54,7 @@ module.exports = {
   waitingRoom: {
     backButton: { x: 100, y: 50 },
   },
+
+  // Typing indicator location (above message input)
+  typingIndicator: { x: 640, y: 610 },
 };

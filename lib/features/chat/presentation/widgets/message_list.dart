@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/networking/p2p_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../room/providers/room_provider.dart';
 import '../../../room/domain/chat_message.dart';
@@ -335,10 +336,16 @@ class _MessageBubble extends ConsumerWidget {
               children: _quickReactions.map((emoji) {
                 return GestureDetector(
                   onTap: () {
+                    // Update local state
                     ref.read(messagesProvider.notifier).addReaction(
                       message.messageId,
                       emoji,
                       currentPeerId,
+                    );
+                    // Broadcast to other peers
+                    ref.read(p2pProvider.notifier).sendReaction(
+                      messageId: message.messageId,
+                      emoji: emoji,
                     );
                     Navigator.pop(context);
                   },
