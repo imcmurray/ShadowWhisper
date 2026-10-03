@@ -62,7 +62,7 @@ class PeerConnection {
     };
 
     _peerConnection!.onConnectionState = (state) {
-      print('Peer $peerId connection state: $state');
+      // Connection state change - notify callback (no debug logging in production)
       onConnectionState?.call(state);
     };
 
@@ -112,13 +112,14 @@ class PeerConnection {
   }
 
   /// Send a P2P message through the data channel.
-  void sendMessage(P2PMessage message) {
+  /// Returns true if the message was sent, false if the channel is not open.
+  bool sendMessage(P2PMessage message) {
     if (_dataChannel != null && _dataChannel!.state == RTCDataChannelState.RTCDataChannelOpen) {
       final jsonString = jsonEncode(message.toJson());
       _dataChannel!.send(RTCDataChannelMessage(jsonString));
-    } else {
-      print('Cannot send message: data channel not open for peer $peerId');
+      return true;
     }
+    return false; // Channel not open - caller can handle retry logic
   }
 
   void _setupDataChannel(RTCDataChannel channel) {
@@ -129,13 +130,12 @@ class PeerConnection {
         final json = jsonDecode(message.text) as Map<String, dynamic>;
         final p2pMessage = P2PMessage.fromJson(json);
         onMessage(p2pMessage);
-      } catch (error) {
-        print('Error parsing P2P message: $error');
+      } catch (_) {
+        // Silently ignore malformed messages - could be attack or version mismatch
       }
     };
 
     channel.onDataChannelState = (state) {
-      print('Data channel state for peer $peerId: $state');
       if (state == RTCDataChannelState.RTCDataChannelOpen) {
         onDataChannelOpen?.call();
       }

@@ -12,13 +12,8 @@ class TypingIndicator extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final participants = ref.watch(participantsProvider);
-    final currentPeerId = ref.watch(currentPeerIdProvider);
-
-    // Get participants who are typing (excluding current user)
-    final typingParticipants = participants
-        .where((p) => p.isTyping && p.peerId != currentPeerId)
-        .toList();
+    // Use selective provider to only rebuild when typing status changes - PERF FIX 1.2
+    final typingParticipants = ref.watch(typingParticipantsProvider);
 
     if (typingParticipants.isEmpty) {
       return const SizedBox.shrink();
